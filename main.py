@@ -7,12 +7,17 @@ import time, os, requests
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-def send_telegram(msg):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+# ===== TELEGRAM (FINAL FIX) =====
+def send(msg):
     try:
-        requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
+        if TOKEN and CHAT_ID:
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                data={"chat_id": CHAT_ID, "text": msg}
+            )
+        print(msg)
     except Exception as e:
-        print("Telegram Error:", e)
+        print("Telegram error:", e)
 
 positions = {}
 last_trade_time = {}
@@ -27,18 +32,6 @@ STOCKS = [
 "CIPLA.NS","COFORGE.NS","TRENT.NS"
 ]
 
-# ===== TELEGRAM =====
-def send(msg):
-    try:
-        if TOKEN:
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                data={"chat_id": CHAT_ID, "text": msg}
-            )
-        print(msg)
-    except:
-        print("Telegram error")
-
 # ===== SAFE =====
 def safe(x):
     try:
@@ -46,7 +39,7 @@ def safe(x):
     except:
         return 0.0
 
-# ===== DATA (RETRY FIXED) =====
+# ===== DATA =====
 def get_df(stock, interval="5m"):
     for _ in range(3):
         try:
@@ -91,7 +84,7 @@ def ai_score(row):
     score += weights.get("MACD",25) if safe(row["MACD"])>safe(row["MACD_SIGNAL"]) else -weights.get("MACD",25)
     return score
 
-# ===== RESTORE FIX =====
+# ===== RESTORE =====
 def restore_state():
     for s, data in positions.items():
         df = get_df(s)
@@ -102,17 +95,17 @@ def restore_state():
         else:
             highest_price[s] = data["entry"]
 
-        last_trade_time[s] = time.time() - 300  # cooldown safe
+        last_trade_time[s] = time.time() - 300
 
 # ===== BOT =====
 def run():
     global positions, weights
 
-    send_telegram("🚀 V12 FIXED PRO BOT STARTED")
+    send("🚀 V12 FIXED PRO BOT STARTED")
     init_db()
 
     weights = load_weights()
-    send_telegram(f"🧠 AI Weights: {weights}")
+    send(f"🧠 AI Weights: {weights}")
 
     positions = load_positions()
     restore_state()
@@ -124,7 +117,7 @@ def run():
 
     while True:
         try:
-            # ===== NIFTY TREND =====
+            # ===== NIFTY =====
             nifty_df = get_df("^NSEI")
             nifty_trend = True
 
@@ -175,22 +168,17 @@ def run():
 
                         send(f"🟢 BUY {s} @ {price} | Score {score}")
 
-                    # ===== EXIT (FIXED LOGIC) =====
+                    # ===== EXIT =====
                     if pos:
                         highest_price[s] = max(highest_price.get(s, price), price)
 
-                        trail_sl = highest_price[s] * 0.98   # base trailing
-
-                        # profit lock
+                        trail_sl = highest_price[s] * 0.98
                         pnl = price - pos["entry"]
+
                         if pnl > 2:
                             trail_sl = highest_price[s] * 0.99
 
-                        # EXIT CONDITIONS (separate & clear)
-                        exit_trail = price < trail_sl
-                        exit_score = score <= -60
-
-                        if exit_trail or exit_score:
+                        if price < trail_sl or score <= -60:
                             save_trade(s, pos["entry"], price, pnl)
                             delete_position(s)
 
@@ -205,9 +193,9 @@ def run():
                 except Exception as stock_error:
                     print("STOCK ERROR:", s, stock_error)
 
-            # ===== HEARTBEAT =====
+            # ===== HEARTBEAT (3 HOURS) =====
             if time.time() - last_heartbeat > 10800:
-                send_telegram("🤖 BOT RUNNING OK")
+                send("🤖 BOT RUNNING OK")
                 last_heartbeat = time.time()
 
             time.sleep(60)
