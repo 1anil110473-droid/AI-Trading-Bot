@@ -1,11 +1,40 @@
 import psycopg2
 import os
 
+# =========================
+# 🔥 SAFE DATABASE CONNECT
+# =========================
 def connect():
-    return psycopg2.connect(os.getenv("DATABASE_URL"))
+    db_url = os.getenv("DATABASE_URL")
 
-def init_db():
+    if not db_url:
+        raise Exception("❌ DATABASE_URL missing in Railway Variables")
+
+    try:
+        return psycopg2.connect(db_url)
+    except Exception as e:
+        print("❌ DB Connection Error:", e)
+        return None
+
+
+# =========================
+# 🔒 SAFE CONNECT WRAPPER
+# =========================
+def safe_connect():
     conn = connect()
+    if conn is None:
+        print("⚠️ Skipping DB operation (no connection)")
+    return conn
+
+
+# =========================
+# 🧱 INIT DATABASE
+# =========================
+def init_db():
+    conn = safe_connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
     # ===== TRADES TABLE =====
@@ -27,7 +56,7 @@ def init_db():
     )
     """)
 
-    # ===== AI WEIGHTS TABLE (NEW) =====
+    # ===== AI WEIGHTS TABLE =====
     cur.execute("""
     CREATE TABLE IF NOT EXISTS ai_weights (
         name TEXT PRIMARY KEY,
@@ -38,13 +67,17 @@ def init_db():
     conn.commit()
     conn.close()
 
-    # 🔥 Default weights insert (IMPORTANT)
     init_weights()
 
 
-# ===== DEFAULT AI WEIGHTS =====
+# =========================
+# 🧠 DEFAULT WEIGHTS
+# =========================
 def init_weights():
-    conn = connect()
+    conn = safe_connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
     defaults = {
@@ -57,7 +90,7 @@ def init_weights():
     for k, v in defaults.items():
         cur.execute("""
         INSERT INTO ai_weights (name, value)
-        VALUES (%s,%s)
+        VALUES (%s, %s)
         ON CONFLICT (name) DO NOTHING
         """, (k, v))
 
@@ -65,9 +98,14 @@ def init_weights():
     conn.close()
 
 
-# ===== LOAD WEIGHTS =====
+# =========================
+# 📊 LOAD WEIGHTS
+# =========================
 def load_weights():
-    conn = connect()
+    conn = safe_connect()
+    if conn is None:
+        return {}
+
     cur = conn.cursor()
 
     cur.execute("SELECT name, value FROM ai_weights")
@@ -78,12 +116,17 @@ def load_weights():
     return {r[0]: r[1] for r in rows}
 
 
-# ===== UPDATE WEIGHTS (SELF LEARNING) =====
+# =========================
+# 🧠 UPDATE WEIGHTS
+# =========================
 def update_weights(weights, pnl):
-    conn = connect()
+    conn = safe_connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
-    step = 1  # 🔥 safe learning speed
+    step = 1
 
     for key in weights:
         if pnl > 0:
@@ -91,7 +134,6 @@ def update_weights(weights, pnl):
         else:
             weights[key] -= step
 
-        # 🔒 limit (important)
         weights[key] = max(5, min(weights[key], 50))
 
         cur.execute("""
@@ -102,47 +144,71 @@ def update_weights(weights, pnl):
     conn.close()
 
 
-# ===== OLD FUNCTIONS (UNCHANGED) =====
-
+# =========================
+# 💰 SAVE TRADE
+# =========================
 def save_trade(stock, entry, exit, pnl):
-    conn = connect()
+    conn = safe_connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
-    cur.execute(
-        "INSERT INTO trades (stock, entry, exit, pnl) VALUES (%s,%s,%s,%s)",
-        (stock, entry, exit, pnl)
-    )
+    cur.execute("""
+        INSERT INTO trades (stock, entry, exit, pnl)
+        VALUES (%s, %s, %s, %s)
+    """, (stock, entry, exit, pnl))
 
     conn.commit()
     conn.close()
 
 
+# =========================
+# 📜 GET TRADES
+# =========================
 def get_trades():
-    conn = connect()
+    conn = safe_connect()
+    if conn is None:
+        return []
+
     cur = conn.cursor()
 
     cur.execute("SELECT stock, entry, exit, pnl FROM trades ORDER BY id DESC")
     data = cur.fetchall()
 
     conn.close()
+
     return data
 
 
+# =========================
+# 📌 SAVE POSITION
+# =========================
 def save_position(stock, entry):
-    conn = connect()
+    conn = safe_connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
-    cur.execute(
-        "INSERT INTO positions (stock, entry) VALUES (%s,%s) ON CONFLICT (stock) DO NOTHING",
-        (stock, entry)
-    )
+    cur.execute("""
+        INSERT INTO positions (stock, entry)
+        VALUES (%s, %s)
+        ON CONFLICT (stock) DO NOTHING
+    """, (stock, entry))
 
     conn.commit()
     conn.close()
 
 
+# =========================
+# ❌ DELETE POSITION
+# =========================
 def delete_position(stock):
-    conn = connect()
+    conn = safe_connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
     cur.execute("DELETE FROM positions WHERE stock=%s", (stock,))
@@ -151,8 +217,14 @@ def delete_position(stock):
     conn.close()
 
 
+# =========================
+# 📦 LOAD POSITIONS
+# =========================
 def load_positions():
-    conn = connect()
+    conn = safe_connect()
+    if conn is None:
+        return {}
+
     cur = conn.cursor()
 
     cur.execute("SELECT stock, entry FROM positions")
