@@ -7,6 +7,13 @@ import time, os, requests
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+def send_telegram(msg):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    try:
+        requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
+    except Exception as e:
+        print("Telegram Error:", e)
+
 positions = {}
 last_trade_time = {}
 highest_price = {}
@@ -101,11 +108,11 @@ def restore_state():
 def run():
     global positions, weights
 
-    send("🚀 V12 FIXED PRO BOT STARTED")
+    send_telegram("🚀 V12 FIXED PRO BOT STARTED")
     init_db()
 
     weights = load_weights()
-    send(f"🧠 AI Weights: {weights}")
+    send_telegram(f"🧠 AI Weights: {weights}")
 
     positions = load_positions()
     restore_state()
@@ -199,8 +206,8 @@ def run():
                     print("STOCK ERROR:", s, stock_error)
 
             # ===== HEARTBEAT =====
-            if time.time() - last_heartbeat > 1800:
-                send("🤖 BOT RUNNING OK")
+            if time.time() - last_heartbeat > 10800:
+                send_telegram("🤖 BOT RUNNING OK")
                 last_heartbeat = time.time()
 
             time.sleep(60)
