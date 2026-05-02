@@ -1,5 +1,5 @@
 from db import init_db, save_trade, save_position, delete_position, load_positions
-from db import load_weights, update_weights   # 🔥 NEW
+from db import load_weights, update_weights
 import yfinance as yf
 import pandas as pd
 import time, os, requests
@@ -10,8 +10,6 @@ CHAT_ID = os.getenv("CHAT_ID")
 positions = {}
 last_trade_time = {}
 highest_price = {}
-
-# 🔥 AI weights (global)
 weights = {}
 
 STOCKS = [
@@ -34,25 +32,24 @@ def send(msg):
     except:
         print("Telegram error")
 
-# ===== SAFE VALUE =====
+# ===== SAFE =====
 def safe(x):
     try:
-        if hasattr(x, "values"):
-            return float(x.values[0])
-        return float(x)
+        return float(x.values[0]) if hasattr(x,"values") else float(x)
     except:
         return 0.0
 
-# ===== DATA =====
+# ===== DATA (RETRY FIXED) =====
 def get_df(stock, interval="5m"):
     for _ in range(3):
         try:
             df = yf.download(stock, period="2d", interval=interval, progress=False)
             if df is None or df.empty or len(df) < 50:
-                return None
+                time.sleep(1)
+                continue
             return df
         except:
-            time.sleep(2)
+            time.sleep(1)
     return None
 
 # ===== INDICATORS =====
@@ -66,13 +63,11 @@ def indicators(df):
     df["EMA15"] = df["Close"].ewm(span=15).mean()
 
     df["RET"] = df["Close"].pct_change()
-    df["RSI"] = df["RET"].rolling(14).mean() * 100
+    df["RSI"] = df["RET"].rolling(14).mean()*100
 
-    df["VWAP"] = (df["Close"] * df["Volume"]).cumsum() / df["Volume"].cumsum()
-
+    df["VWAP"] = (df["Close"]*df["Volume"]).cumsum()/df["Volume"].cumsum()
     df["VOL_AVG"] = df["Volume"].rolling(20).mean()
 
-    # MACD
     df["EMA12"] = df["Close"].ewm(span=12).mean()
     df["EMA26"] = df["Close"].ewm(span=26).mean()
     df["MACD"] = df["EMA12"] - df["EMA26"]
@@ -80,32 +75,40 @@ def indicators(df):
 
     return df.dropna()
 
-# ===== AI SCORE (🔥 WEIGHT BASED) =====
+# ===== AI SCORE =====
 def ai_score(row):
     score = 0
-
-    score += weights.get("EMA", 25) if safe(row["EMA5"]) > safe(row["EMA15"]) else -weights.get("EMA", 25)
-    score += weights.get("RSI", 15) if safe(row["RSI"]) > 0 else -weights.get("RSI", 15)
-    score += weights.get("VWAP", 20) if safe(row["Close"]) > safe(row["VWAP"]) else -weights.get("VWAP", 20)
-    score += weights.get("MACD", 25) if safe(row["MACD"]) > safe(row["MACD_SIGNAL"]) else -weights.get("MACD", 25)
-
+    score += weights.get("EMA",25) if safe(row["EMA5"])>safe(row["EMA15"]) else -weights.get("EMA",25)
+    score += weights.get("RSI",15) if safe(row["RSI"])>0 else -weights.get("RSI",15)
+    score += weights.get("VWAP",20) if safe(row["Close"])>safe(row["VWAP"]) else -weights.get("VWAP",20)
+    score += weights.get("MACD",25) if safe(row["MACD"])>safe(row["MACD_SIGNAL"]) else -weights.get("MACD",25)
     return score
+
+# ===== RESTORE FIX =====
+def restore_state():
+    for s, data in positions.items():
+        df = get_df(s)
+        if df is not None:
+            df = indicators(df)
+            if not df.empty:
+                highest_price[s] = max(data["entry"], safe(df.iloc[-1]["Close"]))
+        else:
+            highest_price[s] = data["entry"]
+
+        last_trade_time[s] = time.time() - 300  # cooldown safe
 
 # ===== BOT =====
 def run():
-    global positions, highest_price, weights
+    global positions, weights
 
-    send("🚀 V9 AI POWER BOT STARTED")
+    send("🚀 V12 FIXED PRO BOT STARTED")
     init_db()
 
-    # 🔥 load AI weights
     weights = load_weights()
-    send(f"🧠 AI Weights Loaded: {weights}")
+    send(f"🧠 AI Weights: {weights}")
 
     positions = load_positions()
-
-    for s in positions:
-        highest_price[s] = positions[s]["entry"]
+    restore_state()
 
     if positions:
         send(f"♻️ Restored Positions: {positions}")
@@ -148,7 +151,6 @@ def run():
 
                     pos = positions.get(s)
 
-                    # ===== FILTERS =====
                     trend_ok = safe(last5["EMA5"]) > safe(last5["EMA15"])
                     volume_ok = volume > vol_avg
                     mtf_ok = safe(last15["EMA5"]) > safe(last15["EMA15"])
@@ -158,7 +160,7 @@ def run():
                     cooldown = 300
 
                     # ===== ENTRY =====
-                    if score >= 60 and not pos and trend_ok and volume_ok and mtf_ok and nifty_trend and (now - last_time > cooldown):
+                    if score >= 60 and not pos and trend_ok and volume_ok and mtf_ok and nifty_trend and (now-last_time>cooldown):
                         positions[s] = {"entry": price}
                         save_position(s, price)
                         highest_price[s] = price
@@ -166,41 +168,32 @@ def run():
 
                         send(f"🟢 BUY {s} @ {price} | Score {score}")
 
-                    # ===== TRAILING SL =====
+                    # ===== EXIT (FIXED LOGIC) =====
                     if pos:
                         highest_price[s] = max(highest_price.get(s, price), price)
-                        trail_sl = highest_price[s] * 0.98
 
-                        if price < trail_sl:
-                            pnl = price - pos["entry"]
+                        trail_sl = highest_price[s] * 0.98   # base trailing
 
+                        # profit lock
+                        pnl = price - pos["entry"]
+                        if pnl > 2:
+                            trail_sl = highest_price[s] * 0.99
+
+                        # EXIT CONDITIONS (separate & clear)
+                        exit_trail = price < trail_sl
+                        exit_score = score <= -60
+
+                        if exit_trail or exit_score:
                             save_trade(s, pos["entry"], price, pnl)
                             delete_position(s)
 
-                            # 🔥 AI LEARNING
                             update_weights(weights, pnl)
 
-                            send(f"🔒 TRAIL EXIT {s} ₹{round(pnl,2)}")
+                            send(f"🔒 EXIT {s} ₹{round(pnl,2)}")
 
                             del positions[s]
-                            del highest_price[s]
-                            continue
-
-                    # ===== NORMAL EXIT =====
-                    elif pos and score <= -60:
-                        pnl = price - pos["entry"]
-
-                        save_trade(s, pos["entry"], price, pnl)
-                        delete_position(s)
-
-                        # 🔥 AI LEARNING
-                        update_weights(weights, pnl)
-
-                        send(f"🔁 EXIT {s} ₹{round(pnl,2)}")
-
-                        del positions[s]
-                        if s in highest_price:
-                            del highest_price[s]
+                            if s in highest_price:
+                                del highest_price[s]
 
                 except Exception as stock_error:
                     print("STOCK ERROR:", s, stock_error)
@@ -210,22 +203,12 @@ def run():
                 send("🤖 BOT RUNNING OK")
                 last_heartbeat = time.time()
 
-            time.sleep(90)
+            time.sleep(60)
 
         except Exception as e:
-            print("LOOP ERROR:", e)
-            send(f"⚠️ LOOP ERROR: {e}")
+            send(f"⚠️ ERROR {e}")
             time.sleep(5)
 
-# ===== MASTER LOOP =====
-def start():
-    while True:
-        try:
-            run()
-        except Exception as e:
-            print("CRASH:", e)
-            send(f"🚨 BOT CRASHED: {e}")
-            time.sleep(5)
-
+# ===== START =====
 if __name__ == "__main__":
-    start()
+    run()
