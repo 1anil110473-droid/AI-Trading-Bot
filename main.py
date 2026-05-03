@@ -7,13 +7,14 @@ import time, os, requests
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# ===== TELEGRAM (FINAL FIX) =====
+# ===== TELEGRAM SAFE =====
 def send(msg):
     try:
         if TOKEN and CHAT_ID:
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                data={"chat_id": CHAT_ID, "text": msg}
+                data={"chat_id": CHAT_ID, "text": msg},
+                timeout=5
             )
         print(msg)
     except Exception as e:
@@ -32,27 +33,32 @@ STOCKS = [
 "CIPLA.NS","COFORGE.NS","TRENT.NS"
 ]
 
-# ===== SAFE =====
 def safe(x):
     try:
         return float(x.values[0]) if hasattr(x,"values") else float(x)
     except:
         return 0.0
 
-# ===== DATA =====
+# ===== DATA SAFE =====
 def get_df(stock, interval="5m"):
     for _ in range(3):
         try:
-            df = yf.download(stock, period="2d", interval=interval, progress=False)
+            df = yf.download(
+                stock,
+                period="2d",
+                interval=interval,
+                progress=False,
+                threads=False
+            )
             if df is None or df.empty or len(df) < 50:
                 time.sleep(1)
                 continue
             return df
-        except:
+        except Exception as e:
+            print("DATA ERROR:", stock, e)
             time.sleep(1)
     return None
 
-# ===== INDICATORS =====
 def indicators(df):
     df = df.copy()
 
@@ -75,7 +81,6 @@ def indicators(df):
 
     return df.dropna()
 
-# ===== AI SCORE =====
 def ai_score(row):
     score = 0
     score += weights.get("EMA",25) if safe(row["EMA5"])>safe(row["EMA15"]) else -weights.get("EMA",25)
@@ -84,7 +89,6 @@ def ai_score(row):
     score += weights.get("MACD",25) if safe(row["MACD"])>safe(row["MACD_SIGNAL"]) else -weights.get("MACD",25)
     return score
 
-# ===== RESTORE =====
 def restore_state():
     for s, data in positions.items():
         df = get_df(s)
@@ -97,11 +101,10 @@ def restore_state():
 
         last_trade_time[s] = time.time() - 300
 
-# ===== BOT =====
 def run():
     global positions, weights
 
-    send("🚀 V12 FIXED PRO BOT STARTED")
+    send("🚀 BOT STARTED")
     init_db()
 
     weights = load_weights()
@@ -110,14 +113,12 @@ def run():
     positions = load_positions()
     restore_state()
 
-    if positions:
-        send(f"♻️ Restored Positions: {positions}")
-
     last_heartbeat = time.time()
 
     while True:
+        loop_start = time.time()
+
         try:
-            # ===== NIFTY =====
             nifty_df = get_df("^NSEI")
             nifty_trend = True
 
@@ -157,18 +158,14 @@ def run():
 
                     now = time.time()
                     last_time = last_trade_time.get(s, 0)
-                    cooldown = 300
 
-                    # ===== ENTRY =====
-                    if score >= 60 and not pos and trend_ok and volume_ok and mtf_ok and nifty_trend and (now-last_time>cooldown):
+                    if score >= 60 and not pos and trend_ok and volume_ok and mtf_ok and nifty_trend and (now-last_time>300):
                         positions[s] = {"entry": price}
                         save_position(s, price)
                         highest_price[s] = price
                         last_trade_time[s] = now
+                        send(f"🟢 BUY {s} @ {price}")
 
-                        send(f"🟢 BUY {s} @ {price} | Score {score}")
-
-                    # ===== EXIT =====
                     if pos:
                         highest_price[s] = max(highest_price.get(s, price), price)
 
@@ -181,7 +178,6 @@ def run():
                         if price < trail_sl or score <= -60:
                             save_trade(s, pos["entry"], price, pnl)
                             delete_position(s)
-
                             update_weights(weights, pnl)
 
                             send(f"🔒 EXIT {s} ₹{round(pnl,2)}")
@@ -190,13 +186,17 @@ def run():
                             if s in highest_price:
                                 del highest_price[s]
 
-                except Exception as stock_error:
-                    print("STOCK ERROR:", s, stock_error)
+                except Exception as e:
+                    print("STOCK ERROR:", s, e)
 
-            # ===== HEARTBEAT (3 HOURS) =====
+            # HEARTBEAT 3 HOURS
             if time.time() - last_heartbeat > 10800:
                 send("🤖 BOT RUNNING OK")
                 last_heartbeat = time.time()
+
+            # LOOP STUCK ALERT
+            if time.time() - loop_start > 300:
+                send("⚠️ LOOP SLOW")
 
             time.sleep(60)
 
@@ -204,6 +204,5 @@ def run():
             send(f"⚠️ ERROR {e}")
             time.sleep(5)
 
-# ===== START =====
 if __name__ == "__main__":
     run()
