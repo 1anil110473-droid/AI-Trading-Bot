@@ -1,14 +1,17 @@
 import psycopg2
 import os
 
+# ===== CONNECT =====
 def connect():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
+
+# ===== INIT DB =====
 def init_db():
     conn = connect()
     cur = conn.cursor()
 
-    # ===== TRADES TABLE =====
+    # ===== TRADES =====
     cur.execute("""
     CREATE TABLE IF NOT EXISTS trades (
         id SERIAL PRIMARY KEY,
@@ -19,7 +22,7 @@ def init_db():
     )
     """)
 
-    # ===== POSITIONS TABLE =====
+    # ===== POSITIONS =====
     cur.execute("""
     CREATE TABLE IF NOT EXISTS positions (
         stock TEXT PRIMARY KEY,
@@ -27,7 +30,7 @@ def init_db():
     )
     """)
 
-    # ===== AI WEIGHTS TABLE (NEW) =====
+    # ===== AI WEIGHTS =====
     cur.execute("""
     CREATE TABLE IF NOT EXISTS ai_weights (
         name TEXT PRIMARY KEY,
@@ -35,10 +38,19 @@ def init_db():
     )
     """)
 
+    # ===== 🔥 PATTERN MEMORY TABLE =====
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS patterns (
+        key TEXT PRIMARY KEY,
+        wins INTEGER,
+        total INTEGER
+    )
+    """)
+
     conn.commit()
     conn.close()
 
-    # 🔥 Default weights insert (IMPORTANT)
+    # default weights
     init_weights()
 
 
@@ -78,12 +90,12 @@ def load_weights():
     return {r[0]: r[1] for r in rows}
 
 
-# ===== UPDATE WEIGHTS (SELF LEARNING) =====
+# ===== UPDATE WEIGHTS =====
 def update_weights(weights, pnl):
     conn = connect()
     cur = conn.cursor()
 
-    step = 1  # 🔥 safe learning speed
+    step = 1
 
     for key in weights:
         if pnl > 0:
@@ -91,7 +103,7 @@ def update_weights(weights, pnl):
         else:
             weights[key] -= step
 
-        # 🔒 limit (important)
+        # limits
         weights[key] = max(5, min(weights[key], 50))
 
         cur.execute("""
@@ -102,8 +114,57 @@ def update_weights(weights, pnl):
     conn.close()
 
 
-# ===== OLD FUNCTIONS (UNCHANGED) =====
+# ===== 🔥 PATTERN MEMORY SAVE =====
+def save_pattern(pattern, pnl):
+    conn = connect()
+    cur = conn.cursor()
 
+    cur.execute("SELECT wins, total FROM patterns WHERE key=%s", (pattern,))
+    row = cur.fetchone()
+
+    if row:
+        wins, total = row
+        if pnl > 0:
+            wins += 1
+        total += 1
+
+        cur.execute("""
+        UPDATE patterns
+        SET wins=%s, total=%s
+        WHERE key=%s
+        """, (wins, total, pattern))
+
+    else:
+        wins = 1 if pnl > 0 else 0
+        total = 1
+
+        cur.execute("""
+        INSERT INTO patterns (key, wins, total)
+        VALUES (%s,%s,%s)
+        """, (pattern, wins, total))
+
+    conn.commit()
+    conn.close()
+
+
+# ===== 🔥 PATTERN SCORE =====
+def get_pattern_score(pattern):
+    conn = connect()
+    cur = conn.cursor()
+
+    cur.execute("SELECT wins, total FROM patterns WHERE key=%s", (pattern,))
+    row = cur.fetchone()
+
+    conn.close()
+
+    if row:
+        wins, total = row
+        return wins / total if total else 0.5
+
+    return 0.5  # neutral
+
+
+# ===== SAVE TRADE =====
 def save_trade(stock, entry, exit, pnl):
     conn = connect()
     cur = conn.cursor()
@@ -117,6 +178,7 @@ def save_trade(stock, entry, exit, pnl):
     conn.close()
 
 
+# ===== GET TRADES =====
 def get_trades():
     conn = connect()
     cur = conn.cursor()
@@ -128,19 +190,22 @@ def get_trades():
     return data
 
 
+# ===== SAVE POSITION =====
 def save_position(stock, entry):
     conn = connect()
     cur = conn.cursor()
 
-    cur.execute(
-        "INSERT INTO positions (stock, entry) VALUES (%s,%s) ON CONFLICT (stock) DO NOTHING",
-        (stock, entry)
-    )
+    cur.execute("""
+    INSERT INTO positions (stock, entry)
+    VALUES (%s,%s)
+    ON CONFLICT (stock) DO NOTHING
+    """, (stock, entry))
 
     conn.commit()
     conn.close()
 
 
+# ===== DELETE POSITION =====
 def delete_position(stock):
     conn = connect()
     cur = conn.cursor()
@@ -151,6 +216,7 @@ def delete_position(stock):
     conn.close()
 
 
+# ===== LOAD POSITIONS =====
 def load_positions():
     conn = connect()
     cur = conn.cursor()
