@@ -1,6 +1,7 @@
 from db import init_db, save_trade, save_position, delete_position, load_positions
 from db import load_weights, update_weights, get_trades
-from db import save_pattern, get_pattern_score   # 🔥 NEW
+from db import save_pattern, get_pattern_score
+
 import yfinance as yf
 import pandas as pd
 import time, os, requests
@@ -12,8 +13,8 @@ positions = {}
 last_trade_time = {}
 highest_price = {}
 weights = {}
-last_pnl = 0
 
+# ===== STOCKS =====
 STOCKS = [
 "HDFCBANK.NS","ICICIBANK.NS","SBIN.NS",
 "TCS.NS","INFY.NS","WIPRO.NS",
@@ -25,10 +26,11 @@ STOCKS = [
 # ===== TELEGRAM =====
 def send(msg):
     try:
-        if TOKEN:
+        if TOKEN and CHAT_ID:
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                data={"chat_id": CHAT_ID, "text": msg}
+                data={"chat_id": CHAT_ID, "text": msg},
+                timeout=5
             )
         print(msg)
     except:
@@ -41,19 +43,41 @@ def safe(x):
     except:
         return 0.0
 
-# ===== DATA =====
+# ===== MARKET TIME FILTER =====
+def market_open():
+    now = time.localtime()
+    h, m = now.tm_hour, now.tm_min
+
+    return (h > 9 or (h == 9 and m >= 15)) and (h < 15 or (h == 15 and m <= 30))
+
+# ===== DATA (🔥 STRONG FIX) =====
 def get_df(stock, interval="5m"):
-    try:
-        df = yf.download(stock, period="2d", interval=interval, progress=False)
-        if df is None or df.empty or len(df) < 50:
-            return None
-        return df
-    except:
-        return None
+    for _ in range(3):
+        try:
+            df = yf.download(
+                stock,
+                period="5d",   # 🔥 FIXED
+                interval=interval,
+                progress=False,
+                threads=False
+            )
+
+            if df is None or df.empty or len(df) < 50:
+                time.sleep(2)
+                continue
+
+            return df
+
+        except Exception as e:
+            print("DATA ERROR:", stock, e)
+            time.sleep(2)
+
+    return None
 
 # ===== INDICATORS =====
 def indicators(df):
     df = df.copy()
+
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
@@ -82,11 +106,11 @@ def ai_score(row):
     score += weights.get("MACD",25) if safe(row["MACD"])>safe(row["MACD_SIGNAL"]) else -weights.get("MACD",25)
     return score
 
-# ===== PATTERN BUILDER =====
+# ===== PATTERN =====
 def build_pattern(row):
     trend = "UP" if safe(row["EMA5"]) > safe(row["EMA15"]) else "DOWN"
-
     rsi = safe(row["RSI"])
+
     if rsi < 30:
         rsi_zone = "LOW"
     elif rsi > 70:
@@ -113,9 +137,9 @@ def restore():
 
 # ===== BOT =====
 def run():
-    global positions, weights, last_pnl
+    global positions, weights
 
-    send("🚀 V18 AI PATTERN BOT STARTED")
+    send("🚀 V18 FINAL FIXED BOT STARTED")
     init_db()
 
     weights = load_weights()
@@ -128,6 +152,11 @@ def run():
 
     while True:
         try:
+            if not market_open():
+                print("Market Closed")
+                time.sleep(300)
+                continue
+
             # ===== NIFTY =====
             nifty_df = get_df("^NSEI")
             nifty_trend = True
@@ -166,20 +195,21 @@ def run():
                     mtf_ok = safe(row15["EMA5"]) > safe(row15["EMA15"])
                     volume_ok = volume > (1.2 * vol_avg)
 
-                    # 🔥 PATTERN
+                    # ===== PATTERN FIX =====
                     pattern = build_pattern(row)
                     pattern_score = get_pattern_score(pattern)
-                    pattern_ok = pattern_score >= 0.5
 
-                    # 🔥 dynamic threshold
-                    entry_threshold = 55
-                    if trend_ok and mtf_ok and nifty_trend:
-                        entry_threshold = 50
+                    if pattern_score is None:
+                        pattern_score = 0.5
+
+                    pattern_ok = pattern_score >= 0.4
+
+                    # ===== ENTRY =====
+                    entry_threshold = 50 if trend_ok and mtf_ok and nifty_trend else 55
 
                     now = time.time()
                     last_time = last_trade_time.get(s,0)
 
-                    # ===== ENTRY =====
                     if (score >= entry_threshold and pattern_ok and not pos and
                         trend_ok and mtf_ok and volume_ok and nifty_trend and
                         (now-last_time>300)):
@@ -190,7 +220,7 @@ def run():
                         highest_price[s] = price
                         last_trade_time[s] = now
 
-                        send(f"🟢 BUY {s} @ {price} | Score:{score} | P:{round(pattern_score,2)}")
+                        send(f"🟢 BUY {s} @ {price} | Score:{score}")
 
                     # ===== EXIT =====
                     if pos:
@@ -198,18 +228,19 @@ def run():
 
                         pnl = price - pos["entry"]
 
-                        trail = highest_price[s] * (0.99 if pnl > 1 else 0.985)
+                        trail = highest_price[s] * (0.995 if pnl > 2 else 0.985)
 
-                        # 🔥 smart exit
-                        if price < trail or score <= -50 or pnl < -3:
-
+                        if (
+                            price < trail or
+                            score <= -50 or
+                            pnl < -3 or
+                            (time.time() - pos["time"] > 3600)
+                        ):
                             save_trade(s, pos["entry"], price, pnl)
                             delete_position(s)
 
                             update_weights(weights, pnl)
-                            save_pattern(pattern, pnl)   # 🔥 MEMORY SAVE
-
-                            last_pnl = pnl
+                            save_pattern(pattern, pnl)
 
                             wr = get_winrate()
 
@@ -227,12 +258,11 @@ def run():
                 send("🤖 BOT RUNNING OK")
                 last_heartbeat = time.time()
 
-            time.sleep(70)
+            time.sleep(60)
 
         except Exception as e:
             send(f"⚠️ ERROR {e}")
             time.sleep(5)
 
-# ===== START =====
 if __name__ == "__main__":
     run()
