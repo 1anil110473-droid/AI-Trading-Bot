@@ -81,31 +81,43 @@ def predict(series):
     except:
         return safe(series[-1])
 
+# ===== RISK CONTROL =====
+def risk_check(confidence):
+    global positions
+
+    if len(positions) >= 4:
+        return False
+
+    long_count = len([p for p in positions.values() if p["type"]=="LONG"])
+    short_count = len([p for p in positions.values() if p["type"]=="SHORT"])
+
+    # block over-direction
+    if confidence > 0 and long_count >= 2:
+        return False
+    if confidence < 0 and short_count >= 2:
+        return False
+
+    return True
+
 # ===== BOT =====
 def run():
     global equity,peak
 
     init_db()
-    send("🚀 V35 DUAL MODE BOT STARTED")
+    send("🚀 V36 RISK CONTROL BOT STARTED")
 
     while True:
         try:
             global_trend = safe(get_global_trend())
-            sector_signals = {}
 
-            # ===== MODE SELECT =====
-            mode = "SAFE"
-            if global_trend > 0:
-                mode = "AGGRESSIVE"
+            # ===== DRAW DOWN STOP =====
+            dd = (peak - equity) / peak
+            if dd > 0.20:
+                send("🛑 DRAW DOWN HIT - BOT PAUSED")
+                time.sleep(300)
+                continue
 
-            if mode=="SAFE":
-                scan_list = random.sample(STOCKS,5)
-                entry_th = 0.03
-            else:
-                scan_list = STOCKS
-                entry_th = 0.02
-
-            for s in scan_list:
+            for s in STOCKS:
                 try:
                     d1=get_data(s,"1h")
                     d2=get_data(s,"15m")
@@ -128,26 +140,27 @@ def run():
                     base_conf = ml + news + rl
 
                     sector = get_sector(s)
-                    sector_signals.setdefault(sector, []).append(base_conf)
-
-                    sec_score = safe(sector_score(sector, sector_signals))
+                    sec_score = safe(sector_score(sector,{sector:[base_conf]}))
 
                     confidence = base_conf + (global_trend*0.5) + (sec_score*0.5)
 
                     pos=positions.get(s)
 
-                    qty=max(1,int((equity*0.1)/price))
+                    # ===== POSITION SIZE (5%) =====
+                    qty=max(1,int((equity*0.05)/price))
 
                     # ===== ENTRY =====
-                    if confidence>entry_th and not pos:
-                        positions[s]={"entry":price,"qty":qty,"type":"LONG"}
-                        save_position(s,price,qty,"LONG")
-                        send(f"🟢 BUY {s} @ {round(price,2)} | Mode:{mode}")
+                    if not pos and risk_check(confidence):
 
-                    elif confidence<-entry_th and not pos:
-                        positions[s]={"entry":price,"qty":qty,"type":"SHORT"}
-                        save_position(s,price,qty,"SHORT")
-                        send(f"🔴 SHORT {s} @ {round(price,2)} | Mode:{mode}")
+                        if confidence > 0.03:
+                            positions[s]={"entry":price,"qty":qty,"type":"LONG"}
+                            save_position(s,price,qty,"LONG")
+                            send(f"🟢 BUY {s} @ {round(price,2)}")
+
+                        elif confidence < -0.03:
+                            positions[s]={"entry":price,"qty":qty,"type":"SHORT"}
+                            save_position(s,price,qty,"SHORT")
+                            send(f"🔴 SHORT {s} @ {round(price,2)}")
 
                     # ===== EXIT =====
                     if pos:
@@ -161,19 +174,19 @@ def run():
                         equity+=pnl
                         peak=max(peak,equity)
 
-                        dd=(peak-equity)/peak
+                        hold_time = time.time() - pos.get("time", time.time())
 
-                        # SAFE exit tighter
-                        if mode=="SAFE":
-                            exit_cond = pnl>600 or pnl<-400 or dd>0.20
-                        else:
-                            exit_cond = pnl>1000 or pnl<-600 or dd>0.25
-
-                        if exit_cond:
+                        # smart exit
+                        if (
+                            pnl > 800 or
+                            pnl < -400 or
+                            hold_time > 3600 or
+                            confidence * (1 if pos["type"]=="LONG" else -1) < 0
+                        ):
                             save_trade(s,pos["entry"],price,pnl)
                             delete_position(s)
 
-                            send(f"🔒 EXIT {s} ₹{round(pnl,2)} | Mode:{mode}")
+                            send(f"🔒 EXIT {s} ₹{round(pnl,2)}")
 
                             del positions[s]
 
