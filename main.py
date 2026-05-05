@@ -26,14 +26,26 @@ STOCKS=[
 "CIPLA.NS","COFORGE.NS","TRENT.NS"
 ]
 
+# ===== SAFE =====
+def safe(x):
+    try:
+        if isinstance(x,(list,np.ndarray)):
+            return float(np.array(x).flatten()[0])
+        return float(x)
+    except:
+        return 0.0
+
+# ===== TELEGRAM =====
 def send(msg):
     try:
         if TOKEN:
             requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-            data={"chat_id":CHAT_ID,"text":msg})
-    except: pass
+            data={"chat_id":CHAT_ID,"text":msg},timeout=5)
+    except:
+        pass
     print(msg)
 
+# ===== DATA =====
 def get_data(stock,interval):
     try:
         if interval in ["5m","15m"]:
@@ -52,101 +64,126 @@ def get_data(stock,interval):
     except:
         return None
 
+# ===== ML =====
 def predict(series):
     try:
+        series=np.array(series,dtype=float)
         X,y=prepare_data(series)
 
         if len(X)<20:
-            return float(series[-1])
+            return safe(series[-1])
 
         if random.random()<0.2:
             model.fit(X,y,epochs=1,verbose=0)
 
         pred=model.predict(X[-1].reshape(1,10,1),verbose=0)
-
-        # SAFE conversion
-        return float(pred.flatten()[0])
-
+        return safe(pred)
     except:
-        return float(series[-1])
+        return safe(series[-1])
 
+# ===== BOT =====
 def run():
     global equity,peak
 
     init_db()
-    send("🚀 V35 GLOBAL AI STARTED")
+    send("🚀 V35 DUAL MODE BOT STARTED")
 
     while True:
         try:
-            global_trend = get_global_trend()
+            global_trend = safe(get_global_trend())
             sector_signals = {}
 
-            for s in random.sample(STOCKS,5):
+            # ===== MODE SELECT =====
+            mode = "SAFE"
+            if global_trend > 0:
+                mode = "AGGRESSIVE"
 
-                d1=get_data(s,"1h")
-                d2=get_data(s,"15m")
-                d3=get_data(s,"5m")
+            if mode=="SAFE":
+                scan_list = random.sample(STOCKS,5)
+                entry_th = 0.03
+            else:
+                scan_list = STOCKS
+                entry_th = 0.02
 
-                if d1 is None or d2 is None or d3 is None:
-                    continue
+            for s in scan_list:
+                try:
+                    d1=get_data(s,"1h")
+                    d2=get_data(s,"15m")
+                    d3=get_data(s,"5m")
 
-                price=d3[-1]
+                    if d1 is None or d2 is None or d3 is None:
+                        continue
 
-                p1,p2,p3=predict(d1),predict(d2),predict(d3)
+                    price=safe(d3[-1])
 
-                ml=((p1-price)/price+(p2-price)/price+(p3-price)/price)/3
-                news=get_sentiment(s)
-                rl=get_avg_reward()
+                    p1=safe(predict(d1))
+                    p2=safe(predict(d2))
+                    p3=safe(predict(d3))
 
-                base_conf = ml + news + rl
+                    ml=((p1-price)/price + (p2-price)/price + (p3-price)/price)/3
 
-                sector = get_sector(s)
-                sector_signals.setdefault(sector, []).append(base_conf)
+                    news=safe(get_sentiment(s))
+                    rl=safe(get_avg_reward())
 
-                sec_score = sector_score(sector, sector_signals)
+                    base_conf = ml + news + rl
 
-                confidence = base_conf + (global_trend*0.5) + (sec_score*0.5)
+                    sector = get_sector(s)
+                    sector_signals.setdefault(sector, []).append(base_conf)
 
-                if global_trend < -0.5:
-                    continue
+                    sec_score = safe(sector_score(sector, sector_signals))
 
-                pos=positions.get(s)
-                qty=max(1,int((equity*0.1)/price))
+                    confidence = base_conf + (global_trend*0.5) + (sec_score*0.5)
 
-                if confidence>0.02 and not pos:
-                    positions[s]={"entry":price,"qty":qty,"type":"LONG"}
-                    save_position(s,price,qty,"LONG")
-                    send(f"🟢 BUY {s} @ {round(price,2)}")
+                    pos=positions.get(s)
 
-                elif confidence<-0.02 and not pos:
-                    positions[s]={"entry":price,"qty":qty,"type":"SHORT"}
-                    save_position(s,price,qty,"SHORT")
-                    send(f"🔴 SHORT {s} @ {round(price,2)}")
+                    qty=max(1,int((equity*0.1)/price))
 
-                if pos:
-                    pnl=(price-pos["entry"])*pos["qty"]
-                    if pos["type"]=="SHORT":
-                        pnl=-pnl
+                    # ===== ENTRY =====
+                    if confidence>entry_th and not pos:
+                        positions[s]={"entry":price,"qty":qty,"type":"LONG"}
+                        save_position(s,price,qty,"LONG")
+                        send(f"🟢 BUY {s} @ {round(price,2)} | Mode:{mode}")
 
-                    save_reward(pnl)
+                    elif confidence<-entry_th and not pos:
+                        positions[s]={"entry":price,"qty":qty,"type":"SHORT"}
+                        save_position(s,price,qty,"SHORT")
+                        send(f"🔴 SHORT {s} @ {round(price,2)} | Mode:{mode}")
 
-                    equity+=pnl
-                    peak=max(peak,equity)
+                    # ===== EXIT =====
+                    if pos:
+                        pnl=(price-pos["entry"])*pos["qty"]
 
-                    dd=(peak-equity)/peak
+                        if pos["type"]=="SHORT":
+                            pnl=-pnl
 
-                    if pnl>800 or pnl<-500 or dd>0.25:
-                        save_trade(s,pos["entry"],price,pnl)
-                        delete_position(s)
+                        save_reward(pnl)
 
-                        send(f"🔒 EXIT {s} ₹{round(pnl,2)} | Eq:{round(equity)}")
+                        equity+=pnl
+                        peak=max(peak,equity)
 
-                        del positions[s]
+                        dd=(peak-equity)/peak
+
+                        # SAFE exit tighter
+                        if mode=="SAFE":
+                            exit_cond = pnl>600 or pnl<-400 or dd>0.20
+                        else:
+                            exit_cond = pnl>1000 or pnl<-600 or dd>0.25
+
+                        if exit_cond:
+                            save_trade(s,pos["entry"],price,pnl)
+                            delete_position(s)
+
+                            send(f"🔒 EXIT {s} ₹{round(pnl,2)} | Mode:{mode}")
+
+                            del positions[s]
+
+                except Exception as e:
+                    print("STOCK ERROR:",s,e)
 
             time.sleep(60)
 
         except Exception as e:
-            send(f"ERROR {e}")
+            send(f"🔥 ERROR {e}")
             time.sleep(5)
 
 if __name__=="__main__":
