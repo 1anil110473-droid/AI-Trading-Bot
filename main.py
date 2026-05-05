@@ -5,7 +5,7 @@ import yfinance as yf
 from db import *
 from model import create_model,prepare_data
 from sentiment import get_sentiment
-from global import get_global_trend
+from global_market import get_global_trend
 from sector import get_sector, sector_score
 
 TOKEN=os.getenv("TELEGRAM_TOKEN")
