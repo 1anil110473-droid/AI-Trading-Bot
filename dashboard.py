@@ -17,13 +17,26 @@ PASSWORD = os.getenv("DASH_PASS", "1234")
 
 # ===== LOGIN PAGE =====
 login_page = """
-<h2>🔐 Login Dashboard</h2>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login</title>
+<style>
+body { background:#111; color:#fff; font-family:Arial; text-align:center; margin-top:100px; }
+input { padding:10px; margin:5px; }
+button { padding:10px 20px; }
+</style>
+</head>
+<body>
+<h2>🔐 V37 Login</h2>
 <form method="post">
-    Username: <input type="text" name="username"><br><br>
-    Password: <input type="password" name="password"><br><br>
-    <input type="submit" value="Login">
+<input name="username" placeholder="Username"><br>
+<input name="password" type="password" placeholder="Password"><br>
+<button type="submit">Login</button>
 </form>
 <p style="color:red;">{{error}}</p>
+</body>
+</html>
 """
 
 # ===== AUTH =====
@@ -46,97 +59,144 @@ def logout():
     session.clear()
     return redirect("/login")
 
-# ===== DASHBOARD =====
+# ===== API =====
+@app.route("/api/data")
+def data():
+    if not is_logged_in():
+        return {"error":"unauthorized"},401
+
+    trades = get_trades() or []
+    positions = load_positions() or []
+
+    pnl_list = []
+    equity = 0
+
+    for t in trades:
+        try:
+            pnl = float(t[3])
+            equity += pnl
+            pnl_list.append(equity)
+        except:
+            continue
+
+    return jsonify({
+        "trades": trades[-20:],
+        "positions": positions,
+        "pnl_curve": pnl_list,
+        "total_pnl": equity,
+        "avg_reward": get_avg_reward()
+    })
+
+# ===== DASHBOARD UI =====
 @app.route("/")
 def home():
     if not is_logged_in():
         return redirect("/login")
 
-    try:
-        trades = get_trades()
-    except:
-        trades = []
+    return render_template_string("""
+<!DOCTYPE html>
+<html>
+<head>
+<title>V37 Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { background:#0b0b0b; color:#eee; font-family:Arial; }
+.container { width:90%; margin:auto; }
+.card { background:#1a1a1a; padding:15px; margin:10px 0; border-radius:10px; }
+h2 { color:#00ffcc; }
+table { width:100%; border-collapse:collapse; }
+td, th { padding:8px; border-bottom:1px solid #333; }
+.green { color:#00ff00; }
+.red { color:#ff4444; }
+</style>
+</head>
 
-    try:
-        positions = load_positions()
-    except:
-        positions = {}
+<body>
+<div class="container">
+<h2>🚀 V37 PRO DASHBOARD</h2>
+<a href="/logout">Logout</a>
 
-    # SAFE CALC
-    pnl = 0
-    if trades:
-        try:
-            pnl = sum([t[3] for t in trades if len(t) > 3])
-        except:
-            pnl = 0
+<div class="card">
+<h3>Total PnL: <span id="pnl"></span></h3>
+<h3>Avg Reward: <span id="avg"></span></h3>
+</div>
 
-    try:
-        avg = get_avg_reward()
-    except:
-        avg = 0
+<div class="card">
+<canvas id="chart"></canvas>
+</div>
 
-    html = f"""
-    <h2>🚀 V35 LIVE DASHBOARD</h2>
-    <a href="/logout">Logout</a>
+<div class="card">
+<h3>📌 Open Positions</h3>
+<table id="pos"></table>
+</div>
 
-    <h3>Total Trades: {len(trades)}</h3>
-    <h3>Total PnL: {round(pnl,2)}</h3>
-    <h3>Avg Reward: {round(avg,2)}</h3>
+<div class="card">
+<h3>📜 Trades</h3>
+<table id="trades"></table>
+</div>
+</div>
 
-    <hr>
+<script>
+let chart;
 
-    <h3>📌 Open Positions</h3>
-    <ul>
-    """
+async function loadData(){
+    const res = await fetch('/api/data');
+    const data = await res.json();
 
-    if positions:
-        for s,p in positions.items():
-            entry = p.get("entry",0)
-            qty = p.get("qty",0)
-            typ = p.get("type","NA")
+    document.getElementById("pnl").innerText = data.total_pnl.toFixed(2);
+    document.getElementById("avg").innerText = data.avg_reward.toFixed(2);
 
-            html += f"<li>{s} | Entry:{entry} | Qty:{qty} | {typ}</li>"
-    else:
-        html += "<li>No open positions</li>"
+    // ===== POSITIONS =====
+    let pos_html = "<tr><th>Stock</th><th>Entry</th><th>Qty</th><th>Type</th></tr>";
+    for(let s in data.positions){
+        let p = data.positions[s];
+        pos_html += `<tr>
+            <td>${s}</td>
+            <td>${p.entry}</td>
+            <td>${p.qty}</td>
+            <td>${p.type}</td>
+        </tr>`;
+    }
+    document.getElementById("pos").innerHTML = pos_html;
 
-    html += "</ul><hr><h3>📜 Recent Trades</h3><ul>"
+    // ===== TRADES =====
+    let t_html = "<tr><th>Stock</th><th>Entry</th><th>Exit</th><th>PnL</th></tr>";
+    data.trades.forEach(t=>{
+        let color = t[3] >= 0 ? "green" : "red";
+        t_html += `<tr>
+            <td>${t[0]}</td>
+            <td>${t[1]}</td>
+            <td>${t[2]}</td>
+            <td class="${color}">${t[3]}</td>
+        </tr>`;
+    });
+    document.getElementById("trades").innerHTML = t_html;
 
-    if trades:
-        for t in trades[-10:]:
-            try:
-                html += f"<li>{t[0]} | Entry:{t[1]} | Exit:{t[2]} | PnL:{t[3]}</li>"
-            except:
-                continue
-    else:
-        html += "<li>No trades yet</li>"
+    // ===== CHART =====
+    if(chart) chart.destroy();
 
-    html += "</ul>"
+    chart = new Chart(document.getElementById("chart"), {
+        type: 'line',
+        data: {
+            labels: data.pnl_curve.map((_,i)=>i),
+            datasets: [{
+                label: 'Equity Curve',
+                data: data.pnl_curve,
+                borderColor: '#00ffcc',
+                fill: false
+            }]
+        }
+    });
+}
 
-    return html
+// AUTO REFRESH
+setInterval(loadData, 5000);
+loadData();
+</script>
 
-# ===== API =====
-@app.route("/api/stats")
-def stats():
-    if not is_logged_in():
-        return {"error":"unauthorized"},401
-
-    try:
-        trades = get_trades()
-    except:
-        trades = []
-
-    pnl = 0
-    if trades:
-        try:
-            pnl = sum([t[3] for t in trades if len(t)>3])
-        except:
-            pnl = 0
-
-    return jsonify({
-        "trades": len(trades),
-        "pnl": pnl,
-        "avg_reward": get_avg_reward()
-    })
+</body>
+</html>
+""")
 
 # ===== RUN =====
 if __name__ == "__main__":
