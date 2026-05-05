@@ -53,15 +53,22 @@ def get_data(stock,interval):
         return None
 
 def predict(series):
-    X,y=prepare_data(series)
-    if len(X)<20:
-        return series[-1]
+    try:
+        X,y=prepare_data(series)
 
-    if random.random()<0.2:
-        model.fit(X,y,epochs=1,verbose=0)
+        if len(X)<20:
+            return float(series[-1])
 
-    pred=model.predict(X[-1].reshape(1,10,1),verbose=0)
-    return float(pred[0][0])
+        if random.random()<0.2:
+            model.fit(X,y,epochs=1,verbose=0)
+
+        pred=model.predict(X[-1].reshape(1,10,1),verbose=0)
+
+        # SAFE conversion
+        return float(pred.flatten()[0])
+
+    except:
+        return float(series[-1])
 
 def run():
     global equity,peak
