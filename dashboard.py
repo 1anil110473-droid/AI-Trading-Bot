@@ -1,77 +1,95 @@
-from flask import Flask, request, redirect, session
-from db import get_trades
-import os
+from flask import Flask
+from db import get_trades, load_positions
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "secret123")
 
-USERNAME = os.getenv("DASH_USER", "admin")
-PASSWORD = os.getenv("DASH_PASS", "1234")
+@app.route("/")
+def dashboard():
+    trades = get_trades()
+    positions = load_positions()
 
-# ===== LOGIN =====
-@app.route("/", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        user = request.form.get("username")
-        pwd = request.form.get("password")
+    pnl = sum([t[4] for t in trades]) if trades else 0
 
-        if user == USERNAME and pwd == PASSWORD:
-            session["logged_in"] = True
-            return redirect("/dashboard")
-        else:
-            return """
-            <h3>❌ Wrong Username or Password</h3>
-            <a href="/">Try Again</a>
-            """
+    # ===== OPEN POSITIONS =====
+    pos_html = ""
+    for s,p in positions.items():
+        pos_html += f"""
+        <tr>
+        <td>{s}</td>
+        <td>{p['type']}</td>
+        <td>{p['entry']}</td>
+        <td>{p['qty']}</td>
+        <td>{round(p['sl'],2)}</td>
+        <td>{round(p['target'],2)}</td>
+        </tr>
+        """
 
-    return """
-    <html>
-    <body style="font-family:Arial;text-align:center;margin-top:100px;">
-    <h2>🔐 AI BOT LOGIN</h2>
-    <form method="post">
-        <input name="username" placeholder="Username"><br><br>
-        <input type="password" name="password" placeholder="Password"><br><br>
-        <button>Login</button>
-    </form>
-    </body>
-    </html>
-    """
+    # ===== TRADE TABLE =====
+    trade_html = ""
+    for t in trades[:20]:
+        trade_html += f"""
+        <tr>
+        <td>{t[0]}</td>
+        <td>{t[1]}</td>
+        <td>{t[2]}</td>
+        <td>{t[3]}</td>
+        <td>{round(t[4],2)}</td>
+        <td>{t[5]}</td>
+        <td>{t[6]}</td>
+        </tr>
+        """
 
-# ===== DASHBOARD =====
-@app.route("/dashboard")
-def dash():
-    if not session.get("logged_in"):
-        return redirect("/")
-
-    trades = get_trades() or []
-
-    pnl = 0
-    for t in trades:
-        try:
-            pnl += float(t[3])
-        except:
-            pass
+    pnl_data = [t[4] for t in trades[:20]]
 
     return f"""
     <html>
-    <body style="font-family:Arial;text-align:center;margin-top:50px;">
-    
-    <a href="/logout" style="float:right;color:red;margin-right:20px;">🔓 Logout</a>
+    <head>
+    <title>AI BOT DASHBOARD</title>
+    </head>
 
-    <h2>🚀 AI BOT DASHBOARD</h2>
-    <h3>Total Trades: {len(trades)}</h3>
-    <h3>Total PnL: ₹{round(pnl,2)}</h3>
+    <body style="font-family:Arial; text-align:center;">
+
+    <h1>🚀 AI TRADING DASHBOARD</h1>
+
+    <h2>Total Trades: {len(trades)}</h2>
+    <h2>Total PnL: ₹{round(pnl,2)}</h2>
+
+    <h3>📌 OPEN POSITIONS</h3>
+    <table border=1 style="margin:auto;">
+    <tr><th>Stock</th><th>Type</th><th>Entry</th><th>Qty</th><th>SL</th><th>Target</th></tr>
+    {pos_html}
+    </table>
+
+    <h3>📊 TRADE HISTORY</h3>
+    <table border=1 style="margin:auto;">
+    <tr><th>Stock</th><th>Type</th><th>Entry</th><th>Exit</th><th>PnL</th><th>Reason</th><th>Time</th></tr>
+    {trade_html}
+    </table>
+
+    <h3>📈 PnL CHART</h3>
+    <canvas id="chart"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    new Chart(document.getElementById('chart'), {{
+        type: 'line',
+        data: {{
+            labels: {list(range(len(pnl_data)))},
+            datasets: [{{
+                label: 'PnL',
+                data: {pnl_data}
+            }}]
+        }}
+    }});
+    </script>
+
+    <script>
+    setTimeout(()=>location.reload(),5000)
+    </script>
 
     </body>
     </html>
     """
 
-# ===== LOGOUT =====
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
-
-# ===== RUN =====
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
