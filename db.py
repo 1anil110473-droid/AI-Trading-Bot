@@ -1,7 +1,7 @@
 import psycopg2, os
 
 def connect():
-    return psycopg2.connect(os.getenv("DATABASE_URL"))
+    return psycopg2.connect(url, sslmode="require")
 
 def execute(q,p=None):
     conn=connect()
