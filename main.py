@@ -17,14 +17,16 @@ weights={"EMA":25,"RSI":15,"MACD":25,"VWAP":20,"VOL":15}
 daily_pnl=0
 trade_count=0
 
-STOCKS=[
-"HDFCBANK.NS","ICICIBANK.NS","SBIN.NS",
-"TCS.NS","INFY.NS","WIPRO.NS",
-"RELIANCE.NS","TATASTEEL.NS","HINDZINC.NS",
-"HINDCOPPER.NS","SUNPHARMA.NS","DRREDDY.NS",
-"CIPLA.NS","COFORGE.NS","TRENT.NS"
-]
+# ===== SAFE =====
+def safe(x):
+    try:
+        if hasattr(x,"values"):
+            return float(x.values[0])
+        return float(x)
+    except:
+        return 0.0
 
+# ===== TELEGRAM =====
 def send(msg):
     try:
         if TOKEN:
@@ -34,27 +36,22 @@ def send(msg):
         pass
     print(msg)
 
-def safe(x):
-    try:return float(x)
-    except:return 0
-
-# ===== NEWS SENTIMENT =====
+# ===== NEWS =====
 def news_sentiment():
     try:
-        url=f"https://newsapi.org/v2/everything?q=stock%20market&apiKey={NEWS_KEY}"
+        url=f"https://newsapi.org/v2/everything?q=stock&apiKey={NEWS_KEY}"
         r=requests.get(url,timeout=5).json()
         articles=r.get("articles",[])[:5]
 
         score=0
         for a in articles:
             txt=(a.get("title","")+a.get("description","")).lower()
-            if "rise" in txt or "bull" in txt: score+=1
-            if "fall" in txt or "crash" in txt: score-=1
+            if "rise" in txt: score+=1
+            if "fall" in txt: score-=1
 
         if score>0:return "POSITIVE"
         if score<0:return "NEGATIVE"
         return "NEUTRAL"
-
     except:
         return random.choice(["POSITIVE","NEGATIVE","NEUTRAL"])
 
@@ -63,14 +60,21 @@ def get_df(s):
     try:
         df=yf.download(s,period="2d",interval="5m",progress=False)
         if df is None or len(df)<50:return None
+
+        if isinstance(df.columns,pd.MultiIndex):
+            df.columns=df.columns.get_level_values(0)
+
         return df
-    except:return None
+    except:
+        return None
 
 # ===== INDICATORS =====
 def indicators(df):
     df=df.copy()
+
     df["EMA5"]=df["Close"].ewm(span=5).mean()
     df["EMA15"]=df["Close"].ewm(span=15).mean()
+
     df["RSI"]=df["Close"].pct_change().rolling(14).mean()*100
     df["VWAP"]=(df["Close"]*df["Volume"]).cumsum()/df["Volume"].cumsum()
 
@@ -84,30 +88,30 @@ def indicators(df):
 
     return df.dropna()
 
-# ===== AI SCORE =====
+# ===== SCORE =====
 def score(r):
     s=0
-    s+=weights["EMA"] if r["EMA5"]>r["EMA15"] else -weights["EMA"]
-    s+=weights["RSI"] if r["RSI"]>0 else -weights["RSI"]
-    s+=weights["VWAP"] if r["Close"]>r["VWAP"] else -weights["VWAP"]
-    s+=weights["MACD"] if r["MACD"]>r["MACD_SIGNAL"] else -weights["MACD"]
-    s+=weights["VOL"] if r["Volume"]>r["VOL_AVG"] else -weights["VOL"]
+    s+=weights["EMA"] if safe(r["EMA5"])>safe(r["EMA15"]) else -weights["EMA"]
+    s+=weights["RSI"] if safe(r["RSI"])>0 else -weights["RSI"]
+    s+=weights["VWAP"] if safe(r["Close"])>safe(r["VWAP"]) else -weights["VWAP"]
+    s+=weights["MACD"] if safe(r["MACD"])>safe(r["MACD_SIGNAL"]) else -weights["MACD"]
+    s+=weights["VOL"] if safe(r["Volume"])>safe(r["VOL_AVG"]) else -weights["VOL"]
     return s
 
-# ===== LEARNING =====
-def update_weights(pnl):
-    for k in weights:
-        weights[k]+=1 if pnl>0 else -1
-        weights[k]=max(5,min(50,weights[k]))
+# ===== TOP 5 =====
+STOCKS=[ "HDFCBANK.NS","ICICIBANK.NS","SBIN.NS",
+"TCS.NS","INFY.NS","WIPRO.NS","RELIANCE.NS","TATASTEEL.NS",
+"HINDZINC.NS","HINDCOPPER.NS","SUNPHARMA.NS","DRREDDY.NS",
+"CIPLA.NS","COFORGE.NS","TRENT.NS" ]
 
-# ===== TOP STOCK =====
 def top5():
     lst=[]
     for s in STOCKS:
         df=get_df(s)
         if df is None:continue
         df=indicators(df)
-        sc=score(df.iloc[-1])
+        r=df.iloc[-1]
+        sc=score(r)
         lst.append((s,sc))
     lst.sort(key=lambda x:abs(x[1]),reverse=True)
     return [x[0] for x in lst[:5]]
@@ -120,7 +124,7 @@ def qty(price):
 def run():
     global positions,daily_pnl,trade_count
 
-    send("🚀 V100 ULTRA BOT STARTED")
+    send("🚀 FINAL ULTRA BOT STARTED")
 
     init_db()
     positions=load_positions()
@@ -145,6 +149,7 @@ def run():
                 df=indicators(df)
 
                 r=df.iloc[-1]
+
                 price=safe(r["Close"])
                 atr=safe(r["ATR"])
                 sc=score(r)
@@ -165,9 +170,10 @@ def run():
 
                     positions[s]={"entry":price,"qty":q,"type":typ,"sl":sl,"target":target,"partial":False}
                     save_position(s,price,q,typ)
+
                     trade_count+=1
 
-                    send(f"🟢 ENTRY {s} {typ} @ {price} SL:{round(sl,2)} TGT:{round(target,2)}")
+                    send(f"🟢 ENTRY {s} {typ} @ {price} | SL:{round(sl,2)} | TGT:{round(target,2)} | NEWS:{news}")
 
                 # EXIT
                 if pos:
@@ -178,19 +184,23 @@ def run():
                         pos["partial"]=True
                         send(f"💰 PARTIAL {s} ₹{round(pnl/2,2)}")
 
-                    pos["sl"]=max(pos["sl"],price-atr) if pos["type"]=="BUY" else min(pos["sl"],price+atr)
+                    # TRAILING SL
+                    if pos["type"]=="BUY":
+                        pos["sl"]=max(pos["sl"],price-atr)
+                    else:
+                        pos["sl"]=min(pos["sl"],price+atr)
 
                     if price<=pos["sl"] or price>=pos["target"] or sc<-60:
                         save_trade(s,pos["entry"],price,pnl)
                         delete_position(s)
-                        update_weights(pnl)
 
                         daily_pnl+=pnl
+
                         send(f"🔒 EXIT {s} ₹{round(pnl,2)}")
 
                         del positions[s]
 
-            # HEARTBEAT 3H
+            # HEARTBEAT (3H)
             if time.time()-last_heartbeat>10800:
                 send("❤️ BOT RUNNING OK (3H)")
                 last_heartbeat=time.time()
