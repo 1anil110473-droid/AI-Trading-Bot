@@ -29,93 +29,72 @@ def init_db():
     CREATE TABLE IF NOT EXISTS trades (
         id SERIAL PRIMARY KEY,
         stock TEXT,
+        type TEXT,
         entry REAL,
         exit REAL,
-        pnl REAL
+        pnl REAL,
+        reason TEXT,
+        time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
     execute("""
     CREATE TABLE IF NOT EXISTS positions (
         stock TEXT PRIMARY KEY,
+        type TEXT,
         entry REAL,
         qty INTEGER,
-        type TEXT
+        sl REAL,
+        target REAL
     )
     """)
 
+# ===== SAVE =====
+def save_trade(stock, typ, entry, exit, pnl, reason):
     execute("""
-    CREATE TABLE IF NOT EXISTS ai_weights (
-        name TEXT PRIMARY KEY,
-        value REAL
-    )
-    """)
+    INSERT INTO trades (stock,type,entry,exit,pnl,reason)
+    VALUES (%s,%s,%s,%s,%s,%s)
+    """,(stock,typ,entry,exit,pnl,reason))
 
-    # default weights
-    defaults = {"EMA":25,"RSI":15,"VWAP":20,"MACD":25}
+def save_position(stock, typ, entry, qty, sl, target):
+    execute("""
+    INSERT INTO positions (stock,type,entry,qty,sl,target)
+    VALUES (%s,%s,%s,%s,%s,%s)
+    ON CONFLICT (stock) DO UPDATE
+    SET entry=EXCLUDED.entry, qty=EXCLUDED.qty, sl=EXCLUDED.sl, target=EXCLUDED.target
+    """,(stock,typ,entry,qty,sl,target))
 
-    for k,v in defaults.items():
-        execute("""
-        INSERT INTO ai_weights (name,value)
-        VALUES (%s,%s)
-        ON CONFLICT (name) DO NOTHING
-        """,(k,v))
+def delete_position(stock):
+    execute("DELETE FROM positions WHERE stock=%s",(stock,))
 
 # ===== LOAD =====
 def load_positions():
     try:
-        conn = connect()
-        cur = conn.cursor()
-        cur.execute("SELECT stock,entry,qty,type FROM positions")
-        rows = cur.fetchall()
+        conn=connect()
+        cur=conn.cursor()
+        cur.execute("SELECT stock,type,entry,qty,sl,target FROM positions")
+        rows=cur.fetchall()
         conn.close()
-        return {r[0]:{"entry":r[1],"qty":r[2],"type":r[3]} for r in rows}
-    except:
-        return {}
 
-def load_weights():
-    try:
-        conn = connect()
-        cur = conn.cursor()
-        cur.execute("SELECT name,value FROM ai_weights")
-        rows = cur.fetchall()
-        conn.close()
-        return {r[0]:r[1] for r in rows}
+        return {
+            r[0]:{
+                "type":r[1],
+                "entry":r[2],
+                "qty":r[3],
+                "sl":r[4],
+                "target":r[5]
+            } for r in rows
+        }
     except:
         return {}
 
 def get_trades():
     try:
-        conn = connect()
-        cur = conn.cursor()
-        cur.execute("SELECT stock,entry,exit,pnl FROM trades ORDER BY id DESC")
-        rows = cur.fetchall()
+        conn=connect()
+        cur=conn.cursor()
+        cur.execute("SELECT stock,type,entry,exit,pnl,reason,time FROM trades ORDER BY id DESC")
+        rows=cur.fetchall()
         conn.close()
         return rows
     except:
         return []
-
-# ===== SAVE =====
-def save_position(stock,entry,qty,typ):
-    execute("""
-    INSERT INTO positions (stock,entry,qty,type)
-    VALUES (%s,%s,%s,%s)
-    ON CONFLICT (stock) DO UPDATE
-    SET entry=EXCLUDED.entry, qty=EXCLUDED.qty, type=EXCLUDED.type
-    """,(stock,entry,qty,typ))
-
-def delete_position(stock):
-    execute("DELETE FROM positions WHERE stock=%s",(stock,))
-
-def save_trade(stock,entry,exit,pnl):
-    execute("""
-    INSERT INTO trades (stock,entry,exit,pnl)
-    VALUES (%s,%s,%s,%s)
-    """,(stock,entry,exit,pnl))
-
-def update_weights(weights,pnl):
-    step=1
-    for k in weights:
-        weights[k]+=step if pnl>0 else -step
-        weights[k]=max(5,min(weights[k],50))
-        execute("UPDATE ai_weights SET value=%s WHERE name=%s",(weights[k],k))
