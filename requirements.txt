@@ -1,4 +1,10 @@
 yfinance
 pandas
+numpy
 requests
+psycopg2-binary
 flask
+gunicorn
+tensorflow
+scikit-learn
+joblib
