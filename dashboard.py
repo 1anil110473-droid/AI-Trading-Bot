@@ -1,134 +1,149 @@
-from flask import Flask, request, redirect, session
-from db import get_trades
-import os, json
+from flask import Flask, jsonify, request, redirect, session, render_template_string
+import os
+
+# SAFE IMPORT
+try:
+    from db import get_trades, load_positions, get_avg_reward
+except:
+    from db import get_trades, load_positions
+    def get_avg_reward():
+        return 0
 
 app = Flask(__name__)
-
-# 🔐 Secret key (session के लिए जरूरी)
-app.secret_key = os.getenv("SECRET_KEY", "supersecret123")
+app.secret_key = os.getenv("SECRET_KEY", "secret123")
 
 USERNAME = os.getenv("DASH_USER", "admin")
 PASSWORD = os.getenv("DASH_PASS", "1234")
 
+# ===== LOGIN PAGE =====
+login_page = """
+<h2>🔐 Login Dashboard</h2>
+<form method="post">
+    Username: <input type="text" name="username"><br><br>
+    Password: <input type="password" name="password"><br><br>
+    <input type="submit" value="Login">
+</form>
+<p style="color:red;">{{error}}</p>
+"""
+
+def is_logged_in():
+    return session.get("logged_in")
+
 # ===== LOGIN =====
-@app.route("/", methods=["GET", "POST"])
+@app.route("/login", methods=["GET","POST"])
 def login():
-    if request.method == "POST":
-        user = request.form.get("username")
-        pwd = request.form.get("password")
-
-        if user == USERNAME and pwd == PASSWORD:
-            session["logged_in"] = True
-            return redirect("/dashboard")
+    error=""
+    if request.method=="POST":
+        if request.form.get("username")==USERNAME and request.form.get("password")==PASSWORD:
+            session["logged_in"]=True
+            return redirect("/")
         else:
-            return "<h2>❌ Wrong Username or Password</h2><a href='/'>Try Again</a>"
+            error="Invalid Credentials"
+    return render_template_string(login_page, error=error)
 
-    return """
-    <html>
-    <body style="font-family:Arial;text-align:center;margin-top:100px;">
-    <h2>🔐 AI BOT LOGIN</h2>
-    <form method="post">
-        <input name="username" placeholder="Username"><br><br>
-        <input type="password" name="password" placeholder="Password"><br><br>
-        <button>Login</button>
-    </form>
-    </body>
-    </html>
-    """
-
-# ===== DASHBOARD =====
-@app.route("/dashboard")
-def dashboard():
-    if not session.get("logged_in"):
-        return redirect("/")
-
-    trades = get_trades()
-
-    total = len(trades)
-    wins = len([t for t in trades if t[3] > 0])
-    pnl = sum([t[3] for t in trades])
-    winrate = (wins / total * 100) if total > 0 else 0
-
-    # cumulative pnl
-    cum = []
-    c = 0
-    for t in trades:
-        c += t[3]
-        cum.append(c)
-
-    pnl_json = json.dumps(cum)
-
-    return f"""
-    <html>
-    <head>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-    body {{ font-family: Arial; background:#0f172a; color:white; margin:0; }}
-    .container {{ padding:20px; }}
-    .card {{ background:#1e293b; padding:15px; border-radius:10px; margin:10px; }}
-    .grid {{ display:flex; flex-wrap:wrap; }}
-    .kpi {{ flex:1; min-width:150px; text-align:center; }}
-    .logout {{ float:right; color:red; text-decoration:none; }}
-    table {{ width:100%; margin-top:20px; border-collapse:collapse; }}
-    th, td {{ padding:10px; border-bottom:1px solid #334155; }}
-    </style>
-    </head>
-
-    <body>
-    <div class="container">
-
-    <a href="/logout" class="logout">🔓 Logout</a>
-
-    <h1>📊 AI PRO DASHBOARD</h1>
-
-    <div class="grid">
-        <div class="card kpi">💰 PnL<br>₹{round(pnl,2)}</div>
-        <div class="card kpi">📈 Win Rate<br>{round(winrate,1)}%</div>
-        <div class="card kpi">📊 Trades<br>{total}</div>
-    </div>
-
-    <div class="card">
-        <h3>📈 PnL Chart</h3>
-        <canvas id="pnlChart"></canvas>
-    </div>
-
-    <div class="card">
-        <h3>📋 Trade History</h3>
-        <table>
-        <tr><th>Stock</th><th>Entry</th><th>Exit</th><th>PnL</th></tr>
-        """ + "".join(
-            [f"<tr><td>{t[0]}</td><td>{t[1]}</td><td>{t[2]}</td><td>{round(t[3],2)}</td></tr>" for t in trades]
-        ) + """
-        </table>
-    </div>
-
-    </div>
-
-    <script>
-    const pnlData = """ + pnl_json + """;
-
-    new Chart(document.getElementById('pnlChart'), {{
-        type: 'line',
-        data: {{
-            labels: pnlData.map((_,i)=>i+1),
-            datasets: [{{
-                label: 'PnL',
-                data: pnlData,
-                borderWidth: 2
-            }}]
-        }}
-    }});
-    </script>
-
-    </body>
-    </html>
-    """
-
-# ===== LOGOUT =====
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect("/")
+    return redirect("/login")
 
+# ===== HOME =====
+@app.route("/")
+def home():
+    if not is_logged_in():
+        return redirect("/login")
+
+    # SAFE LOAD
+    try:
+        trades = get_trades() or []
+    except:
+        trades = []
+
+    try:
+        positions = load_positions() or {}
+    except:
+        positions = {}
+
+    # SAFE PNL
+    pnl = 0
+    for t in trades:
+        try:
+            pnl += float(t[3])
+        except:
+            pass
+
+    # SAFE AVG
+    try:
+        avg = float(get_avg_reward())
+    except:
+        avg = 0
+
+    html = f"""
+    <h2>🚀 V35 LIVE DASHBOARD</h2>
+    <a href="/logout">Logout</a>
+
+    <h3>Total Trades: {len(trades)}</h3>
+    <h3>Total PnL: {round(pnl,2)}</h3>
+    <h3>Avg Reward: {round(avg,2)}</h3>
+
+    <hr>
+
+    <h3>📌 Open Positions</h3>
+    <ul>
+    """
+
+    # 🔥 SAFE POSITION RENDER
+    if isinstance(positions, dict) and positions:
+        for s,p in positions.items():
+            try:
+                entry = p.get("entry", 0)
+                qty = p.get("qty", 0)
+                typ = p.get("type", "NA")
+
+                html += f"<li>{s} | Entry:{entry} | Qty:{qty} | {typ}</li>"
+            except:
+                continue
+    else:
+        html += "<li>No positions</li>"
+
+    html += "</ul><hr><h3>📜 Recent Trades</h3><ul>"
+
+    if trades:
+        for t in trades[-10:]:
+            try:
+                html += f"<li>{t[0]} | Entry:{t[1]} | Exit:{t[2]} | PnL:{t[3]}</li>"
+            except:
+                continue
+    else:
+        html += "<li>No trades yet</li>"
+
+    html += "</ul>"
+
+    return html
+
+# ===== API =====
+@app.route("/api/stats")
+def stats():
+    if not is_logged_in():
+        return {"error":"unauthorized"},401
+
+    try:
+        trades = get_trades() or []
+    except:
+        trades = []
+
+    pnl = 0
+    for t in trades:
+        try:
+            pnl += float(t[3])
+        except:
+            pass
+
+    return jsonify({
+        "trades": len(trades),
+        "pnl": pnl,
+        "avg_reward": get_avg_reward()
+    })
+
+# ===== RUN =====
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
