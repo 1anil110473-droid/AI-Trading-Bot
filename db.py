@@ -82,13 +82,21 @@ def load_positions():
         conn.close()
 
         data = {}
+
         for r in rows:
+            entry_price = r[1]
+
             data[r[0]] = {
-                "entry": r[1],
+                "entry": entry_price,
                 "qty": r[2],
                 "type": r[3],
-                "partial": False   # 🔥 FIX
+
+                # 🔥 NEW ADDITIONS (error fix)
+                "sl": entry_price,         # default SL
+                "target": entry_price,     # default target
+                "partial": False           # partial booking flag
             }
+
         return data
 
     except Exception as e:
