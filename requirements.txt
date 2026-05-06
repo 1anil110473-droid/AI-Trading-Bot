@@ -1,9 +1,0 @@
-yfinance
-pandas
-requests
-flask
-psycopg2-binary
-gunicorn
-scikit-learn
-joblib
-numpy
