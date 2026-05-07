@@ -1,60 +1,78 @@
 import yfinance as yf
+import pandas as pd
 
 def market_trend():
 
-    nifty = yf.download(
+    try:
 
-        "^NSEI",
-        period="2d",
-        interval="15m",
-        auto_adjust=True,
-        progress=False
+        nifty = yf.download(
 
-    )
+            "^NSEI",
+            period="2d",
+            interval="15m",
+            auto_adjust=True,
+            progress=False
 
-    # =========================
-    # SAFETY CHECK
-    # =========================
+        )
 
-    if nifty.empty or len(nifty) < 20:
+        # =========================
+        # EMPTY CHECK
+        # =========================
+
+        if nifty.empty or len(nifty) < 20:
+
+            return "SIDEWAYS"
+
+        # =========================
+        # REMOVE MULTI INDEX
+        # =========================
+
+        if isinstance(nifty.columns, pd.MultiIndex):
+
+            nifty.columns = nifty.columns.get_level_values(0)
+
+        # =========================
+        # REMOVE NaN
+        # =========================
+
+        nifty = nifty.dropna()
+
+        # =========================
+        # CLOSE PRICE
+        # =========================
+
+        close = nifty["Close"].iloc[-1]
+
+        # =========================
+        # EMA 20
+        # =========================
+
+        ema = nifty["Close"].rolling(20).mean().iloc[-1]
+
+        # =========================
+        # FLOAT CONVERSION
+        # =========================
+
+        close = float(close)
+
+        ema = float(ema)
+
+        # =========================
+        # TREND LOGIC
+        # =========================
+
+        if close > ema:
+
+            return "BULLISH"
+
+        elif close < ema:
+
+            return "BEARISH"
 
         return "SIDEWAYS"
 
-    # =========================
-    # REMOVE NaN
-    # =========================
+    except Exception as e:
 
-    nifty = nifty.dropna()
+        print("MARKET TREND ERROR:", e)
 
-    # =========================
-    # SAFE CLOSE VALUE
-    # =========================
-
-    close = float(
-        nifty["Close"].values[-1]
-    )
-
-    # =========================
-    # EMA
-    # =========================
-
-    ema = float(
-        nifty["Close"]
-        .rolling(20)
-        .mean()
-        .values[-1]
-    )
-
-    # =========================
-    # TREND DETECTION
-    # =========================
-
-    if close > ema:
-
-        return "BULLISH"
-
-    elif close < ema:
-
-        return "BEARISH"
-
-    return "SIDEWAYS"
+        return "SIDEWAYS"
