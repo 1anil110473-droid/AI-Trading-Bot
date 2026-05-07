@@ -1,62 +1,147 @@
-from ta.trend import EMAIndicator,MACD
+import pandas as pd
+
+from ta.trend import EMAIndicator, MACD
 from ta.momentum import RSIIndicator
 from ta.volume import VolumeWeightedAveragePrice
 
 from patterns import detect_patterns
 
-def apply_strategy(df,weights):
+def apply_strategy(df, weights):
 
-    df["EMA20"]=EMAIndicator(df["Close"],20).ema_indicator()
-    df["EMA50"]=EMAIndicator(df["Close"],50).ema_indicator()
+    # ==========================================
+    # FIX MULTI INDEX
+    # ==========================================
 
-    df["RSI"]=RSIIndicator(df["Close"],14).rsi()
+    if isinstance(df.columns, pd.MultiIndex):
 
-    macd=MACD(df["Close"])
+        df.columns = df.columns.get_level_values(0)
 
-    df["MACD"]=macd.macd()
-    df["MACD_SIGNAL"]=macd.macd_signal()
+    # ==========================================
+    # REMOVE NaN
+    # ==========================================
 
-    vwap=VolumeWeightedAveragePrice(
-        high=df["High"],
-        low=df["Low"],
-        close=df["Close"],
-        volume=df["Volume"]
+    df = df.dropna()
+
+    # ==========================================
+    # FORCE 1D SERIES
+    # ==========================================
+
+    close = pd.Series(df["Close"]).squeeze()
+
+    high = pd.Series(df["High"]).squeeze()
+
+    low = pd.Series(df["Low"]).squeeze()
+
+    volume = pd.Series(df["Volume"]).squeeze()
+
+    # ==========================================
+    # EMA
+    # ==========================================
+
+    df["EMA20"] = EMAIndicator(
+        close=close,
+        window=20
+    ).ema_indicator()
+
+    df["EMA50"] = EMAIndicator(
+        close=close,
+        window=50
+    ).ema_indicator()
+
+    # ==========================================
+    # RSI
+    # ==========================================
+
+    df["RSI"] = RSIIndicator(
+        close=close,
+        window=14
+    ).rsi()
+
+    # ==========================================
+    # MACD
+    # ==========================================
+
+    macd = MACD(close=close)
+
+    df["MACD"] = macd.macd()
+
+    df["MACD_SIGNAL"] = macd.macd_signal()
+
+    # ==========================================
+    # VWAP
+    # ==========================================
+
+    vwap = VolumeWeightedAveragePrice(
+
+        high=high,
+        low=low,
+        close=close,
+        volume=volume
+
     )
 
-    df["VWAP"]=vwap.volume_weighted_average_price()
+    df["VWAP"] = vwap.volume_weighted_average_price()
 
-    last=df.iloc[-1]
+    # ==========================================
+    # LAST ROW
+    # ==========================================
 
-    score=0
+    last = df.iloc[-1]
 
-    reasons=[]
+    score = 0
 
-    if last["EMA20"]>last["EMA50"]:
+    reasons = []
 
-        score+=weights["EMA"]
+    # ==========================================
+    # EMA SIGNAL
+    # ==========================================
+
+    if last["EMA20"] > last["EMA50"]:
+
+        score += weights["EMA"]
 
         reasons.append("EMA Bullish Trend")
 
-    if last["RSI"]>55:
+    # ==========================================
+    # RSI SIGNAL
+    # ==========================================
 
-        score+=weights["RSI"]
+    if last["RSI"] > 55:
+
+        score += weights["RSI"]
 
         reasons.append("RSI Momentum Strong")
 
-    if last["MACD"]>last["MACD_SIGNAL"]:
+    # ==========================================
+    # MACD SIGNAL
+    # ==========================================
 
-        score+=weights["MACD"]
+    if last["MACD"] > last["MACD_SIGNAL"]:
+
+        score += weights["MACD"]
 
         reasons.append("MACD Bullish")
 
-    if last["Close"]>last["VWAP"]:
+    # ==========================================
+    # VWAP SIGNAL
+    # ==========================================
 
-        score+=weights["VWAP"]
+    if last["Close"] > last["VWAP"]:
+
+        score += weights["VWAP"]
 
         reasons.append("Price Above VWAP")
 
-    patterns=detect_patterns(df)
+    # ==========================================
+    # PATTERN DETECTION
+    # ==========================================
+
+    patterns = detect_patterns(df)
 
     reasons.extend(patterns)
 
-    return score,reasons
+    # ==========================================
+    # FINAL RESULT
+    # ==========================================
+
+    return score, reasons
