@@ -178,11 +178,11 @@ while True:
         # MARKET HOURS FILTER
         # =========================================================
 
-    if not market_open():
+        if not market_open():
 
-         now = datetime.now(TIMEZONE)
+             now = datetime.now(TIMEZONE)
 
-         hour = now.hour
+             hour = now.hour
 
     # ==========================================
     # NIGHT DEEP SLEEP
@@ -198,13 +198,13 @@ while True:
     # PRE-MARKET ACTIVE MODE
     # ==========================================
 
-        else:
+         else:
 
             print("Waiting For Market Open")
 
             time.sleep(300)
 
-        continue
+         continue
 
         # =========================================================
         # DAILY TARGET CHECK
