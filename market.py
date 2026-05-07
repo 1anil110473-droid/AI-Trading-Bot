@@ -2,18 +2,59 @@ import yfinance as yf
 
 def market_trend():
 
-    nifty=yf.download(
+    nifty = yf.download(
+
         "^NSEI",
         period="2d",
         interval="15m",
+        auto_adjust=True,
         progress=False
+
     )
 
-    close=nifty["Close"].iloc[-1]
+    # =========================
+    # SAFETY CHECK
+    # =========================
 
-    ema=nifty["Close"].rolling(20).mean().iloc[-1]
+    if nifty.empty or len(nifty) < 20:
 
-    if close>ema:
+        return "SIDEWAYS"
+
+    # =========================
+    # REMOVE NaN
+    # =========================
+
+    nifty = nifty.dropna()
+
+    # =========================
+    # SAFE CLOSE VALUE
+    # =========================
+
+    close = float(
+        nifty["Close"].values[-1]
+    )
+
+    # =========================
+    # EMA
+    # =========================
+
+    ema = float(
+        nifty["Close"]
+        .rolling(20)
+        .mean()
+        .values[-1]
+    )
+
+    # =========================
+    # TREND DETECTION
+    # =========================
+
+    if close > ema:
+
         return "BULLISH"
 
-    return "BEARISH"
+    elif close < ema:
+
+        return "BEARISH"
+
+    return "SIDEWAYS"
