@@ -1,2 +1,2 @@
-web: python dashboard.py
 worker: python main.py
+web: gunicorn dashboard:app
