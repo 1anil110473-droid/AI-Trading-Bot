@@ -1,0 +1,12 @@
+yfinance
+pandas
+numpy
+ta
+sqlalchemy
+psycopg2-binary
+flask
+gunicorn
+python-dotenv
+requests
+scikit-learn
+plotly
