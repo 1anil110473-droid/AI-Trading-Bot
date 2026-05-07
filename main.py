@@ -1,156 +1,458 @@
 import yfinance as yf
 import time
-import requests
-import os
+import traceback
 
-from db import *
-from ai import *
-from risk import *
-from market import *
-from strategy import *
-from telegram_control import *
-from broker import *
+from db import init_db
+from ai import weights
+from risk import position_size
+from market import market_trend
+from strategy import apply_strategy
+from telegram_control import send
+from broker import place_order
 
-CAPITAL=200000
+# ==========================================
+# CAPITAL CONFIGURATION
+# ==========================================
 
-positions={}
+CAPITAL = 200000
 
-daily_profit=0
+DAILY_TARGET = 1000
 
-STOCKS=[
+# ==========================================
+# GLOBAL VARIABLES
+# ==========================================
 
-"HDFCBANK.NS","ICICIBANK.NS","SBIN.NS",
-"TCS.NS","INFY.NS","WIPRO.NS",
-"RELIANCE.NS","TATASTEEL.NS","HINDZINC.NS",
-"HINDCOPPER.NS","SUNPHARMA.NS","DRREDDY.NS",
-"CIPLA.NS","COFORGE.NS","TRENT.NS"
+positions = {}
+
+daily_profit = 0
+
+# ==========================================
+# STOCK LIST
+# ==========================================
+
+STOCKS = [
+
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "SBIN.NS",
+
+    "TCS.NS",
+    "INFY.NS",
+    "WIPRO.NS",
+
+    "RELIANCE.NS",
+    "TATASTEEL.NS",
+    "HINDZINC.NS",
+
+    "HINDCOPPER.NS",
+    "SUNPHARMA.NS",
+    "DRREDDY.NS",
+
+    "CIPLA.NS",
+    "COFORGE.NS",
+    "TRENT.NS"
 
 ]
 
+# ==========================================
+# DATABASE INITIALIZATION
+# ==========================================
+
 init_db()
 
-send("🚀 V30 ELITE PRO MAX STARTED")
+# ==========================================
+# START MESSAGE
+# ==========================================
+
+send("""
+
+🚀 V30 ELITE PRO MAX STARTED
+
+✅ AI ENGINE ACTIVE
+✅ MARKET SCANNER ACTIVE
+✅ RISK MANAGEMENT ACTIVE
+✅ HEARTBEAT ACTIVE
+✅ PAPER TRADING MODE ACTIVE
+
+💰 CAPITAL: ₹200000
+🎯 DAILY TARGET: ₹1000
+
+""")
+
+# ==========================================
+# MAIN LOOP
+# ==========================================
 
 while True:
 
     try:
 
-        trend=market_trend()
+        # ==========================================
+        # DAILY TARGET CHECK
+        # ==========================================
 
-        send(f"📊 Market Trend: {trend}")
+        if daily_profit >= DAILY_TARGET:
+
+            send(f"""
+
+🎯 DAILY TARGET ACHIEVED
+
+💰 TOTAL DAILY PROFIT:
+₹{round(daily_profit, 2)}
+
+🛑 NEW TRADES STOPPED
+
+✅ CAPITAL PROTECTED
+✅ OVERTRADING PREVENTED
+
+🚀 BOT WAITING FOR NEXT SESSION
+
+""")
+
+            time.sleep(1800)
+            continue
+
+        # ==========================================
+        # MARKET TREND
+        # ==========================================
+
+        trend = market_trend()
+
+        send(f"""
+
+📊 MARKET TREND UPDATE
+
+📈 CURRENT TREND:
+{trend}
+
+🧠 AI MARKET FILTER ACTIVE
+
+""")
+
+        # ==========================================
+        # STOCK LOOP
+        # ==========================================
 
         for stock in STOCKS:
 
-            df=yf.download(
+            try:
 
-                stock,
-                period="5d",
-                interval="15m",
-                progress=False
+                # ==========================================
+                # DOWNLOAD MARKET DATA
+                # ==========================================
 
-            )
+                df = yf.download(
 
-            if len(df)<100:
-                continue
+                    stock,
+                    period="5d",
+                    interval="15m",
+                    auto_adjust=True,
+                    progress=False
 
-            score,reasons=apply_strategy(df,weights)
+                )
 
-            price=float(df["Close"].iloc[-1])
+                # ==========================================
+                # SAFETY CHECK
+                # ==========================================
 
-            confidence=min(score,100)
+                if df.empty or len(df) < 100:
+                    continue
 
-            qty=position_size(
-                CAPITAL,
-                confidence,
-                price
-            )
+                # ==========================================
+                # APPLY AI STRATEGY
+                # ==========================================
 
-            # MARKET FILTER
+                score, reasons = apply_strategy(df, weights)
 
-            if trend=="BEARISH" and confidence<80:
-                continue
+                # ==========================================
+                # CURRENT PRICE
+                # ==========================================
 
-            # BUY
+                price = round(
+                    float(df["Close"].iloc[-1]),
+                    2
+                )
 
-            if confidence>=70 and stock not in positions:
+                # ==========================================
+                # AI CONFIDENCE
+                # ==========================================
 
-                positions[stock]={
+                confidence = min(score, 100)
 
-                    "buy_price":price,
-                    "qty":qty
+                # ==========================================
+                # SMART POSITION SIZE
+                # ==========================================
 
-                }
+                qty = position_size(
+                    CAPITAL,
+                    confidence,
+                    price
+                )
 
-                place_order(stock,"BUY",qty)
+                # ==========================================
+                # MARKET FILTER
+                # ==========================================
 
-                send(f"""
+                if trend == "BEARISH" and confidence < 80:
+                    continue
+
+                # ==========================================
+                # BUY LOGIC
+                # ==========================================
+
+                if confidence >= 70 and stock not in positions:
+
+                    positions[stock] = {
+
+                        "buy_price": price,
+                        "qty": qty,
+                        "highest_price": price
+
+                    }
+
+                    # ==========================================
+                    # PLACE ORDER
+                    # ==========================================
+
+                    place_order(stock, "BUY", qty)
+
+                    # ==========================================
+                    # TELEGRAM BUY ALERT
+                    # ==========================================
+
+                    send(f"""
 
 🟢 AI BUY SIGNAL
 
-📈 STOCK: {stock}
+📈 STOCK:
+{stock}
 
-💰 ENTRY PRICE: ₹{round(price,2)}
+💰 ENTRY PRICE:
+₹{price}
 
-📦 QTY: {qty}
+📦 QUANTITY:
+{qty}
 
-🧠 CONFIDENCE: {confidence}/100
+💵 INVESTMENT VALUE:
+₹{round(price * qty, 2)}
+
+🧠 AI CONFIDENCE:
+{confidence}/100
 
 📊 AI ANALYSIS:
 
 {chr(10).join(reasons)}
 
-🔥 STRATEGY:
-EMA + RSI + MACD + VWAP + Pattern AI
+🔥 STRATEGY ENGINE:
 
-🛡 RISK MANAGEMENT ACTIVE
+✅ EMA TREND ANALYSIS
+✅ RSI MOMENTUM ANALYSIS
+✅ MACD CONFIRMATION
+✅ VWAP STRENGTH
+✅ PATTERN AI DETECTION
+✅ MARKET TREND FILTER
+✅ SMART RISK MANAGEMENT
+
+🎯 TARGET:
++3%
+
+🛑 STOP LOSS:
+-2%
+
+🛡 TRAILING PROTECTION:
+ACTIVE
+
+🚀 BOT MODE:
+PAPER TRADING
 
 """)
 
-            # EXIT
+                # ==========================================
+                # POSITION MANAGEMENT
+                # ==========================================
 
-            if stock in positions:
+                if stock in positions:
 
-                bp=positions[stock]["buy_price"]
+                    buy_price = positions[stock]["buy_price"]
 
-                pnl=((price-bp)/bp)*100
+                    qty = positions[stock]["qty"]
 
-                if pnl>=3 or pnl<=-2:
+                    # ==========================================
+                    # HIGHEST PRICE TRACKER
+                    # ==========================================
 
-                    reason="Target Achieved"
+                    if price > positions[stock]["highest_price"]:
 
-                    if pnl<=-2:
-                        reason="Stop Loss Hit"
+                        positions[stock]["highest_price"] = price
 
-                    send(f"""
+                    highest_price = positions[stock]["highest_price"]
+
+                    # ==========================================
+                    # PNL CALCULATION
+                    # ==========================================
+
+                    pnl_percent = round(
+                        ((price - buy_price) / buy_price) * 100,
+                        2
+                    )
+
+                    pnl_amount = round(
+                        ((price - buy_price) * qty),
+                        2
+                    )
+
+                    # ==========================================
+                    # TRAILING STOP LOSS
+                    # ==========================================
+
+                    trailing_sl = round(
+                        highest_price * 0.985,
+                        2
+                    )
+
+                    # ==========================================
+                    # EXIT CONDITIONS
+                    # ==========================================
+
+                    exit_reason = None
+
+                    # TARGET EXIT
+
+                    if pnl_percent >= 3:
+
+                        exit_reason = "TARGET ACHIEVED"
+
+                    # STOP LOSS EXIT
+
+                    elif pnl_percent <= -2:
+
+                        exit_reason = "STOP LOSS HIT"
+
+                    # TRAILING STOP LOSS
+
+                    elif price <= trailing_sl and pnl_percent > 0:
+
+                        exit_reason = "TRAILING STOP LOSS HIT"
+
+                    # ==========================================
+                    # EXIT EXECUTION
+                    # ==========================================
+
+                    if exit_reason:
+
+                        daily_profit += pnl_amount
+
+                        send(f"""
 
 🔴 POSITION EXIT
 
-📉 STOCK: {stock}
+📉 STOCK:
+{stock}
 
-💰 EXIT PRICE: ₹{round(price,2)}
+💰 EXIT PRICE:
+₹{price}
 
-📊 RETURN: {round(pnl,2)}%
+📦 QUANTITY:
+{qty}
+
+💵 PNL AMOUNT:
+₹{pnl_amount}
+
+📊 RETURN:
+{pnl_percent}%
 
 🧠 EXIT REASON:
-{reason}
+{exit_reason}
 
-📈 AI CONDITIONS:
+📈 AI MARKET CONDITIONS:
+
 {chr(10).join(reasons)}
 
-🛡 CAPITAL PROTECTED
+🛡 RISK MANAGEMENT:
+ACTIVE
+
+💰 CURRENT DAILY PROFIT:
+₹{round(daily_profit,2)}
+
+🔥 EXIT ANALYSIS COMPLETE
+
+✅ CAPITAL PROTECTED
 
 """)
 
-                    del positions[stock]
+                        del positions[stock]
 
-        # HEARTBEAT
+            # ==========================================
+            # SINGLE STOCK ERROR HANDLING
+            # ==========================================
 
-        send("💓 BOT RUNNING OK")
+            except Exception as stock_error:
+
+                send(f"""
+
+⚠ STOCK ERROR DETECTED
+
+📉 STOCK:
+{stock}
+
+❌ ERROR MESSAGE:
+{str(stock_error)}
+
+🛡 BOT CONTINUING SAFELY
+
+""")
+
+                continue
+
+        # ==========================================
+        # HEARTBEAT MESSAGE
+        # ==========================================
+
+        send(f"""
+
+💓 BOT HEARTBEAT
+
+✅ BOT RUNNING OK
+✅ AI ENGINE ACTIVE
+✅ DATABASE CONNECTED
+✅ MARKET SCANNER ACTIVE
+
+💰 DAILY PROFIT:
+₹{round(daily_profit,2)}
+
+📊 TRACKING STOCKS:
+{len(STOCKS)}
+
+🚀 SYSTEM STATUS:
+STABLE
+
+""")
+
+        # ==========================================
+        # WAIT TIME
+        # ==========================================
 
         time.sleep(1800)
 
+    # ==========================================
+    # MAIN LOOP ERROR HANDLER
+    # ==========================================
+
     except Exception as e:
 
-        send(f"⚠ ERROR: {str(e)}")
+        send(f"""
+
+🚨 MAIN LOOP ERROR
+
+❌ ERROR:
+{str(e)}
+
+📌 TRACEBACK:
+
+{traceback.format_exc()}
+
+🛡 AUTO RECOVERY ACTIVE
+
+""")
 
         time.sleep(60)
