@@ -180,19 +180,31 @@ while True:
 
         if not market_open():
 
-            send("""
+    now = datetime.now(TIMEZONE)
 
-⏰ MARKET CLOSED
+    hour = now.hour
 
-🛑 AI BOT WAITING
+    # ==========================================
+    # NIGHT DEEP SLEEP
+    # ==========================================
 
-📅 Trading resumes during market hours
+    if hour >= 16 or hour < 7:
 
-""")
+        print("Night Mode Active")
 
-            time.sleep(3600)
+        time.sleep(21600)
 
-            continue
+    # ==========================================
+    # PRE-MARKET ACTIVE MODE
+    # ==========================================
+
+    else:
+
+        print("Waiting For Market Open")
+
+        time.sleep(300)
+
+    continue
 
         # =========================================================
         # DAILY TARGET CHECK
