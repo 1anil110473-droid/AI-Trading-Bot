@@ -188,7 +188,7 @@ while True:
     # NIGHT DEEP SLEEP
     # ==========================================
 
-            if hour >= 16 or hour < 7:
+             if hour >= 16 or hour < 7:
 
                  print("Night Mode Active")
 
@@ -198,13 +198,13 @@ while True:
     # PRE-MARKET ACTIVE MODE
     # ==========================================
 
-            else:
+             else:
 
                  print("Waiting For Market Open")
 
                  time.sleep(300)
 
-            continue
+             continue
 
         # =========================================================
         # DAILY TARGET CHECK
