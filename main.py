@@ -14,43 +14,41 @@ from telegram_control import send
 from broker import place_order
 
 # =========================================================
-# CONFIGURATION
+# CONFIG
 # =========================================================
 
 CAPITAL = 200000
-
 DAILY_TARGET = 1000
-
 MAX_OPEN_POSITIONS = 5
 
-RISK_PER_TRADE = 0.02
-
 TRAILING_STOPLOSS_PERCENT = 1.5
-
 TARGET_PERCENT = 3
-
 STOPLOSS_PERCENT = -2
-
 PARTIAL_BOOKING_PERCENT = 2
 
 MARKET_CRASH_THRESHOLD = -1.5
 
-SCAN_INTERVAL = 1800
+# ==========================================
+# IMPORTANT CHANGE
+# ==========================================
+
+SCAN_INTERVAL = 60           # FAST SCAN
+HEARTBEAT_INTERVAL = 1800    # 30 MIN
 
 TIMEZONE = pytz.timezone("Asia/Kolkata")
 
 # =========================================================
-# GLOBAL VARIABLES
+# GLOBALS
 # =========================================================
 
 positions = {}
-
 daily_profit = 0
 
-last_heartbeat = None
+last_heartbeat_time = 0
+last_trend_time = 0
 
 # =========================================================
-# STOCK LIST
+# STOCKS
 # =========================================================
 
 STOCKS = [
@@ -78,25 +76,25 @@ STOCKS = [
 ]
 
 # =========================================================
-# DATABASE INIT
+# DB INIT
 # =========================================================
 
 init_db()
 
 # =========================================================
-# STARTUP MESSAGE
+# START MESSAGE
 # =========================================================
 
 send(f"""
 
-🚀 V35 ELITE INSTITUTIONAL AI STARTED
+🚀 V40 INSTITUTIONAL AI ENGINE STARTED
 
 ✅ AI ENGINE ACTIVE
+✅ FAST EXIT SYSTEM ACTIVE
+✅ SMART HEARTBEAT ACTIVE
+✅ TRAILING STOPLOSS ACTIVE
 ✅ MARKET TREND FILTER ACTIVE
 ✅ MULTI STOCK SCANNER ACTIVE
-✅ TRAILING STOPLOSS ACTIVE
-✅ PARTIAL PROFIT BOOKING ACTIVE
-✅ HEARTBEAT ACTIVE
 ✅ DATABASE CONNECTED
 ✅ PAPER TRADING MODE ACTIVE
 
@@ -109,20 +107,21 @@ send(f"""
 📦 MAX OPEN POSITIONS:
 {MAX_OPEN_POSITIONS}
 
-🛡 RISK MANAGEMENT:
+⚡ SCAN SPEED:
+{SCAN_INTERVAL} sec
+
+🛡 SYSTEM:
 INSTITUTIONAL GRADE
 
 """)
 
 # =========================================================
-# MARKET HOURS CHECK
+# MARKET HOURS
 # =========================================================
 
 def market_open():
 
     now = datetime.now(TIMEZONE)
-
-    # Saturday/Sunday OFF
 
     if now.weekday() >= 5:
         return False
@@ -132,7 +131,7 @@ def market_open():
     return "09:15" <= current <= "15:30"
 
 # =========================================================
-# MARKET CRASH DETECTION
+# MARKET CRASH
 # =========================================================
 
 def market_crash():
@@ -140,28 +139,22 @@ def market_crash():
     try:
 
         nifty = yf.download(
-
             "^NSEI",
             period="2d",
             interval="15m",
             progress=False,
             auto_adjust=True
-
         )
 
         if nifty.empty:
             return False
 
         close = float(nifty["Close"].iloc[-1])
-
         prev = float(nifty["Close"].iloc[-2])
 
         change = ((close - prev) / prev) * 100
 
-        if change <= MARKET_CRASH_THRESHOLD:
-            return True
-
-        return False
+        return change <= MARKET_CRASH_THRESHOLD
 
     except:
         return False
@@ -174,41 +167,31 @@ while True:
 
     try:
 
-        # =========================================================
-        # MARKET HOURS FILTER
-        # =========================================================
+        now = datetime.now(TIMEZONE)
+
+        # =====================================================
+        # MARKET CLOSED
+        # =====================================================
 
         if not market_open():
 
-             now = datetime.now(TIMEZONE)
+            hour = now.hour
 
-             hour = now.hour
+            if hour >= 16 or hour < 7:
 
-    # ==========================================
-    # NIGHT DEEP SLEEP
-    # ==========================================
+                print("Night Deep Sleep")
+                time.sleep(21600)
 
-             if hour >= 16 or hour < 7:
+            else:
 
-                 print("Night Mode Active")
+                print("Waiting Market Open")
+                time.sleep(300)
 
-                 time.sleep(21600)
+            continue
 
-    # ==========================================
-    # PRE-MARKET ACTIVE MODE
-    # ==========================================
-
-             else:
-
-                 print("Waiting For Market Open")
-
-                 time.sleep(300)
-
-             continue
-
-        # =========================================================
-        # DAILY TARGET CHECK
-        # =========================================================
+        # =====================================================
+        # DAILY TARGET
+        # =====================================================
 
         if daily_profit >= DAILY_TARGET:
 
@@ -221,20 +204,14 @@ while True:
 
 🛑 NEW TRADES STOPPED
 
-✅ CAPITAL PROTECTED
-✅ OVERTRADING PREVENTED
-
-🚀 BOT WAITING FOR NEXT SESSION
-
 """)
 
             time.sleep(1800)
-
             continue
 
-        # =========================================================
-        # MARKET CRASH PROTECTION
-        # =========================================================
+        # =====================================================
+        # MARKET CRASH
+        # =====================================================
 
         if market_crash():
 
@@ -242,23 +219,27 @@ while True:
 
 🚨 MARKET CRASH DETECTED
 
-🛑 ALL NEW TRADES BLOCKED
+🛑 NEW TRADES BLOCKED
 
-🛡 CAPITAL PROTECTION MODE ACTIVE
+🛡 SAFETY MODE ACTIVE
 
 """)
 
             time.sleep(1800)
-
             continue
 
-        # =========================================================
-        # MARKET TREND
-        # =========================================================
+        # =====================================================
+        # MARKET TREND UPDATE
+        # EVERY 30 MIN
+        # =====================================================
 
-        trend = market_trend()
+        current_time = time.time()
 
-        send(f"""
+        if current_time - last_trend_time > 1800:
+
+            trend = market_trend()
+
+            send(f"""
 
 📊 MARKET TREND UPDATE
 
@@ -269,60 +250,37 @@ while True:
 
 """)
 
-        # =========================================================
-        # STOCK SCANNING
-        # =========================================================
+            last_trend_time = current_time
+
+        # =====================================================
+        # STOCK SCAN
+        # =====================================================
 
         for stock in STOCKS:
 
             try:
 
-                # =========================================================
-                # MAX POSITION CONTROL
-                # =========================================================
-
-                if len(positions) >= MAX_OPEN_POSITIONS:
-                    break
-
-                # =========================================================
-                # DATA DOWNLOAD
-                # =========================================================
-
                 df = yf.download(
-
                     stock,
                     period="5d",
                     interval="15m",
                     auto_adjust=True,
                     progress=False
-
                 )
 
                 if df.empty or len(df) < 100:
                     continue
 
-                # =========================================================
-                # FIX MULTI INDEX
-                # =========================================================
-
                 if isinstance(df.columns, pd.MultiIndex):
-
                     df.columns = df.columns.get_level_values(0)
 
                 df = df.dropna()
-
-                # =========================================================
-                # STRATEGY
-                # =========================================================
 
                 score, reasons = apply_strategy(df, weights)
 
                 confidence = min(score, 100)
 
-                price = round(
-                    float(df["Close"].iloc[-1]),
-                    2
-                )
+                price = round(float(df["Close"].iloc[-1]), 2)
 
                 qty = position_size(
                     CAPITAL,
@@ -330,51 +288,17 @@ while True:
                     price
                 )
 
-                # =========================================================
-                # STRONG FILTER
-                # =========================================================
+                # =================================================
+                # ENTRY
+                # =================================================
 
-                if trend == "BEARISH" and confidence < 85:
-                    continue
+                if (
 
-                # =========================================================
-                # MULTI TIMEFRAME CONFIRMATION
-                # =========================================================
+                    confidence >= 70
+                    and stock not in positions
+                    and len(positions) < MAX_OPEN_POSITIONS
 
-                higher = yf.download(
-
-                    stock,
-                    period="10d",
-                    interval="1h",
-                    auto_adjust=True,
-                    progress=False
-
-                )
-
-                if higher.empty:
-                    continue
-
-                if isinstance(higher.columns, pd.MultiIndex):
-
-                    higher.columns = higher.columns.get_level_values(0)
-
-                h_close = float(higher["Close"].iloc[-1])
-
-                h_ema = float(
-                    higher["Close"]
-                    .rolling(20)
-                    .mean()
-                    .iloc[-1]
-                )
-
-                if h_close < h_ema:
-                    continue
-
-                # =========================================================
-                # BUY SIGNAL
-                # =========================================================
-
-                if confidence >= 70 and stock not in positions:
+                ):
 
                     positions[stock] = {
 
@@ -388,14 +312,12 @@ while True:
                     place_order(stock, "BUY", qty)
 
                     save_trade(
-
                         stock,
                         "BUY",
                         price,
                         qty,
                         0,
                         "AI BUY"
-
                     )
 
                     send(f"""
@@ -405,32 +327,14 @@ while True:
 📈 STOCK:
 {stock}
 
-💰 ENTRY PRICE:
+💰 ENTRY:
 ₹{price}
 
-📦 QUANTITY:
+📦 QTY:
 {qty}
 
-💵 INVESTMENT:
-₹{round(price*qty,2)}
-
-🧠 AI CONFIDENCE:
+🧠 CONFIDENCE:
 {confidence}/100
-
-📊 AI ANALYSIS:
-
-{chr(10).join(reasons)}
-
-🔥 STRATEGY ENGINE:
-
-✅ EMA TREND
-✅ RSI MOMENTUM
-✅ MACD CONFIRMATION
-✅ VWAP STRENGTH
-✅ PATTERN AI
-✅ MARKET TREND FILTER
-✅ MULTI TIMEFRAME CONFIRMATION
-✅ RISK MANAGEMENT
 
 🎯 TARGET:
 +3%
@@ -438,23 +342,23 @@ while True:
 🛑 STOPLOSS:
 -2%
 
-🛡 TRAILING STOPLOSS:
+🛡 TRAILING STOP:
 ACTIVE
-
-🚀 MODE:
-PAPER TRADING
 
 """)
 
-                # =========================================================
+                # =================================================
                 # POSITION MANAGEMENT
-                # =========================================================
+                # =================================================
 
                 if stock in positions:
 
                     bp = positions[stock]["buy_price"]
-
                     qty = positions[stock]["qty"]
+
+                    # =============================================
+                    # HIGHEST PRICE TRACK
+                    # =============================================
 
                     if price > positions[stock]["highest_price"]:
 
@@ -473,18 +377,19 @@ PAPER TRADING
                     )
 
                     trailing_sl = round(
-                        highest * (1 - TRAILING_STOPLOSS_PERCENT/100),
+                        highest * (
+                            1 - TRAILING_STOPLOSS_PERCENT / 100
+                        ),
                         2
                     )
 
-                    # =========================================================
-                    # PARTIAL PROFIT BOOKING
-                    # =========================================================
+                    # =============================================
+                    # PARTIAL BOOKING
+                    # =============================================
 
                     if (
 
                         pnl_percent >= PARTIAL_BOOKING_PERCENT
-
                         and not positions[stock]["partial_booked"]
 
                     ):
@@ -498,25 +403,20 @@ PAPER TRADING
 📈 STOCK:
 {stock}
 
-💰 CURRENT PRICE:
+💰 PRICE:
 ₹{price}
 
-📊 CURRENT RETURN:
+📊 RETURN:
 {pnl_percent}%
 
-💵 CURRENT PNL:
+💵 PNL:
 ₹{pnl_amount}
-
-🧠 REASON:
-Partial profit secured
-
-🛡 CAPITAL SAFETY IMPROVED
 
 """)
 
-                    # =========================================================
+                    # =============================================
                     # EXIT CONDITIONS
-                    # =========================================================
+                    # =============================================
 
                     exit_reason = None
 
@@ -531,16 +431,15 @@ Partial profit secured
                     elif (
 
                         price <= trailing_sl
-
                         and pnl_percent > 0
 
                     ):
 
                         exit_reason = "TRAILING STOPLOSS HIT"
 
-                    # =========================================================
-                    # EXIT EXECUTION
-                    # =========================================================
+                    # =============================================
+                    # EXIT
+                    # =============================================
 
                     if exit_reason:
 
@@ -549,14 +448,12 @@ Partial profit secured
                         place_order(stock, "SELL", qty)
 
                         save_trade(
-
                             stock,
                             "SELL",
                             price,
                             qty,
                             pnl_amount,
                             exit_reason
-
                         )
 
                         send(f"""
@@ -569,9 +466,6 @@ Partial profit secured
 💰 EXIT PRICE:
 ₹{price}
 
-📦 QUANTITY:
-{qty}
-
 💵 PNL:
 ₹{pnl_amount}
 
@@ -581,17 +475,8 @@ Partial profit secured
 🧠 EXIT REASON:
 {exit_reason}
 
-📈 AI ANALYSIS:
-
-{chr(10).join(reasons)}
-
 💰 DAILY PROFIT:
 ₹{round(daily_profit,2)}
-
-🛡 RISK MANAGEMENT:
-ACTIVE
-
-✅ CAPITAL PROTECTED
 
 """)
 
@@ -599,35 +484,25 @@ ACTIVE
 
             except Exception as stock_error:
 
-                send(f"""
-
-⚠ STOCK ERROR DETECTED
-
-📉 STOCK:
-{stock}
-
-❌ ERROR:
-{str(stock_error)}
-
-🛡 BOT CONTINUING SAFELY
-
-""")
+                print(stock, stock_error)
 
                 continue
 
-        # =========================================================
+        # =====================================================
         # HEARTBEAT
-        # =========================================================
+        # EVERY 30 MIN
+        # =====================================================
 
-        send(f"""
+        if current_time - last_heartbeat_time > HEARTBEAT_INTERVAL:
+
+            send(f"""
 
 💓 BOT HEARTBEAT
 
 ✅ BOT RUNNING OK
 ✅ AI ENGINE ACTIVE
-✅ DATABASE CONNECTED
 ✅ MARKET SCANNER ACTIVE
-✅ TRAILING STOP ACTIVE
+✅ DATABASE CONNECTED
 
 💰 DAILY PROFIT:
 ₹{round(daily_profit,2)}
@@ -643,9 +518,11 @@ STABLE
 
 """)
 
-        # =========================================================
+            last_heartbeat_time = current_time
+
+        # =====================================================
         # WAIT
-        # =========================================================
+        # =====================================================
 
         time.sleep(SCAN_INTERVAL)
 
