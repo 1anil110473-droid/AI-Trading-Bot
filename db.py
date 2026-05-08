@@ -5,7 +5,12 @@ import os
 # DATABASE CONNECTION
 # =========================================================
 
-engine = create_engine(os.getenv("DATABASE_URL"))
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True
+)
 
 # =========================================================
 # INIT DATABASE
@@ -68,6 +73,25 @@ def init_db():
 
         """))
 
+        # =====================================================
+        # POSITIONS TABLE
+        # =====================================================
+
+        conn.execute(text("""
+
+        CREATE TABLE IF NOT EXISTS positions(
+
+            symbol TEXT PRIMARY KEY,
+            buy_price FLOAT,
+            qty INT,
+            highest_price FLOAT,
+            partial_booked BOOLEAN,
+            time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+        )
+
+        """))
+
 # =========================================================
 # SAVE TRADE
 # =========================================================
@@ -108,7 +132,78 @@ def save_trade(symbol, action, price, qty, pnl, reason):
         })
 
 # =========================================================
-# LOAD OPEN POSITIONS
+# SAVE POSITION
+# =========================================================
+
+def save_position(
+    symbol,
+    buy_price,
+    qty,
+    highest_price,
+    partial_booked=False
+):
+
+    with engine.begin() as conn:
+
+        conn.execute(text("""
+
+        INSERT INTO positions(
+            symbol,
+            buy_price,
+            qty,
+            highest_price,
+            partial_booked
+        )
+
+        VALUES(
+            :s,
+            :bp,
+            :q,
+            :hp,
+            :pb
+        )
+
+        ON CONFLICT(symbol)
+
+        DO UPDATE SET
+
+            buy_price = EXCLUDED.buy_price,
+            qty = EXCLUDED.qty,
+            highest_price = EXCLUDED.highest_price,
+            partial_booked = EXCLUDED.partial_booked
+
+        """), {
+
+            "s": symbol,
+            "bp": buy_price,
+            "q": qty,
+            "hp": highest_price,
+            "pb": partial_booked
+
+        })
+
+# =========================================================
+# DELETE POSITION
+# =========================================================
+
+def delete_position(symbol):
+
+    with engine.begin() as conn:
+
+        conn.execute(text("""
+
+        DELETE FROM positions
+
+        WHERE symbol = :s
+
+        """), {
+
+            "s": symbol
+
+        })
+
+# =========================================================
+# LOAD POSITIONS
 # =========================================================
 
 def load_positions():
@@ -119,13 +214,12 @@ def load_positions():
 
         SELECT
             symbol,
-            action,
-            price,
-            qty
+            buy_price,
+            qty,
+            highest_price,
+            partial_booked
 
-        FROM trades
-
-        ORDER BY id ASC
+        FROM positions
 
         """))
 
@@ -135,35 +229,14 @@ def load_positions():
 
     for row in rows:
 
-        symbol = row[0]
-        action = row[1]
-        price = float(row[2])
-        qty = int(row[3])
+        positions[row[0]] = {
 
-        # =====================================================
-        # BUY ENTRY
-        # =====================================================
+            "buy_price": float(row[1]),
+            "qty": int(row[2]),
+            "highest_price": float(row[3]),
+            "partial_booked": bool(row[4])
 
-        if action == "BUY":
-
-            positions[symbol] = {
-
-                "buy_price": price,
-                "qty": qty,
-                "highest_price": price,
-                "partial_booked": False
-
-            }
-
-        # =====================================================
-        # SELL EXIT
-        # =====================================================
-
-        elif action == "SELL":
-
-            if symbol in positions:
-
-                del positions[symbol]
+        }
 
     print("✅ POSITIONS RESTORED")
 
