@@ -1,7 +1,5 @@
-# Future Real Broker API Integration
+MODE = "PAPER"
 
-MODE="PAPER"
+def place_order(symbol, action, qty):
 
-def place_order(symbol,action,qty):
-
-    print(f"{action} {symbol} {qty}")
+    print(f"{action} | {symbol} | QTY={qty}")
