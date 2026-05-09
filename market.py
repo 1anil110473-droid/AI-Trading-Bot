@@ -1,6 +1,10 @@
 import yfinance as yf
 import pandas as pd
 
+# =========================================================
+# MARKET TREND ENGINE
+# =========================================================
+
 def market_trend():
 
     try:
@@ -8,71 +12,47 @@ def market_trend():
         nifty = yf.download(
 
             "^NSEI",
-            period="2d",
+            period="5d",
             interval="15m",
             auto_adjust=True,
-            progress=False
+            progress=False,
+            threads=False
 
         )
 
-        # =========================
-        # EMPTY CHECK
-        # =========================
-
-        if nifty.empty or len(nifty) < 20:
-
+        if nifty.empty:
             return "SIDEWAYS"
-
-        # =========================
-        # REMOVE MULTI INDEX
-        # =========================
 
         if isinstance(nifty.columns, pd.MultiIndex):
 
             nifty.columns = nifty.columns.get_level_values(0)
 
-        # =========================
-        # REMOVE NaN
-        # =========================
-
         nifty = nifty.dropna()
 
-        # =========================
-        # CLOSE PRICE
-        # =========================
+        close = float(nifty["Close"].iloc[-1])
 
-        close = nifty["Close"].iloc[-1]
+        ema20 = float(
+            nifty["Close"]
+            .rolling(20)
+            .mean()
+            .iloc[-1]
+        )
 
-        # =========================
-        # EMA 20
-        # =========================
+        ema50 = float(
+            nifty["Close"]
+            .rolling(50)
+            .mean()
+            .iloc[-1]
+        )
 
-        ema = nifty["Close"].rolling(20).mean().iloc[-1]
-
-        # =========================
-        # FLOAT CONVERSION
-        # =========================
-
-        close = float(close)
-
-        ema = float(ema)
-
-        # =========================
-        # TREND LOGIC
-        # =========================
-
-        if close > ema:
-
+        if close > ema20 > ema50:
             return "BULLISH"
 
-        elif close < ema:
-
+        if close < ema20 < ema50:
             return "BEARISH"
 
         return "SIDEWAYS"
 
-    except Exception as e:
-
-        print("MARKET TREND ERROR:", e)
+    except:
 
         return "SIDEWAYS"
