@@ -17,13 +17,14 @@ from db import (
 )
 
 from ai import weights
+from risk import position_size
 from market import market_trend
 from strategy import apply_strategy
 from telegram_control import send
 from broker import place_order
 
 # =========================================================
-# V51 ULTRA INSTITUTIONAL ENGINE
+# V52 ULTRA INSTITUTIONAL AI ENGINE
 # =========================================================
 
 CAPITAL = 200000
@@ -41,8 +42,6 @@ TRAILING_STOPLOSS_PERCENT = 1.5
 PARTIAL_BOOKING_PERCENT = 2
 
 MARKET_CRASH_THRESHOLD = -1.5
-
-SCAN_INTERVAL = 60
 
 HEARTBEAT_INTERVAL = 1800
 
@@ -95,7 +94,7 @@ STOCKS = [
 init_db()
 
 # =========================================================
-# LOAD OLD POSITIONS
+# LOAD POSITIONS
 # =========================================================
 
 try:
@@ -136,8 +135,10 @@ except Exception as e:
 
 send(f"""
 
-🚀 V51 ULTRA INSTITUTIONAL AI ENGINE STARTED
+🚀 V52 ULTRA INSTITUTIONAL AI ENGINE STARTED
 
+✅ DYNAMIC SCAN ENGINE ACTIVE
+✅ PRE-MARKET ENGINE ACTIVE
 ✅ INSTANT EXIT ENGINE ACTIVE
 ✅ TARGET HIT DETECTION ACTIVE
 ✅ TRAILING STOPLOSS ACTIVE
@@ -160,9 +161,6 @@ send(f"""
 📦 MAX OPEN POSITIONS:
 {MAX_OPEN_POSITIONS}
 
-📊 SCAN SPEED:
-{SCAN_INTERVAL} sec
-
 📦 FIXED QUANTITY:
 {FIXED_QUANTITY}
 
@@ -184,7 +182,53 @@ def market_open():
 
     current = now.strftime("%H:%M")
 
-    return "09:15" <= current <= "15:30"
+    return "09:00" <= current <= "15:30"
+
+# =========================================================
+# BUY ALLOWED
+# =========================================================
+
+def buy_allowed():
+
+    now = datetime.now(TIMEZONE)
+
+    current = now.strftime("%H:%M")
+
+    return "09:15" <= current <= "15:15"
+
+# =========================================================
+# DYNAMIC SCAN ENGINE
+# =========================================================
+
+def dynamic_scan_interval():
+
+    now = datetime.now(TIMEZONE)
+
+    current = now.strftime("%H:%M")
+
+    # =========================================
+    # MARKET OPENING FAST MODE
+    # =========================================
+
+    if "09:15" <= current <= "10:00":
+
+        return 15
+
+    # =========================================
+    # CLOSING SESSION FAST MODE
+    # =========================================
+
+    elif "14:45" <= current <= "15:30":
+
+        return 20
+
+    # =========================================
+    # NORMAL MARKET
+    # =========================================
+
+    else:
+
+        return 60
 
 # =========================================================
 # MARKET CRASH DETECTION
@@ -195,12 +239,14 @@ def market_crash():
     try:
 
         nifty = yf.download(
+
             "^NSEI",
             period="2d",
             interval="5m",
-            progress=False,
             auto_adjust=True,
+            progress=False,
             threads=False
+
         )
 
         if nifty.empty:
@@ -309,7 +355,13 @@ while True:
             continue
 
         # =====================================================
-        # DAILY TARGET CHECK
+        # DYNAMIC SCAN SPEED
+        # =====================================================
+
+        SCAN_INTERVAL = dynamic_scan_interval()
+
+        # =====================================================
+        # DAILY TARGET
         # =====================================================
 
         if daily_profit >= DAILY_TARGET:
@@ -417,7 +469,7 @@ while True:
                     partial_booked = positions[stock]["partial_booked"]
 
                     # =============================================
-                    # UPDATE HIGHEST PRICE
+                    # UPDATE HIGHEST
                     # =============================================
 
                     if price > highest:
@@ -427,11 +479,13 @@ while True:
                         positions[stock]["highest_price"] = highest
 
                         save_position(
+
                             stock,
                             positions[stock]["buy_price"],
                             positions[stock]["qty"],
                             positions[stock]["highest_price"],
                             positions[stock]["partial_booked"]
+
                         )
 
                     # =============================================
@@ -449,10 +503,12 @@ while True:
                     )
 
                     trailing_sl = round(
+
                         highest * (
                             1 - TRAILING_STOPLOSS_PERCENT / 100
                         ),
                         2
+
                     )
 
                     # =============================================
@@ -469,11 +525,13 @@ while True:
                         positions[stock]["partial_booked"] = True
 
                         save_position(
+
                             stock,
                             positions[stock]["buy_price"],
                             positions[stock]["qty"],
                             positions[stock]["highest_price"],
                             positions[stock]["partial_booked"]
+
                         )
 
                         send(f"""
@@ -497,7 +555,7 @@ while True:
 """)
 
                     # =============================================
-                    # EXIT CONDITIONS
+                    # EXIT ENGINE
                     # =============================================
 
                     exit_reason = None
@@ -518,7 +576,7 @@ while True:
 
                         exit_reason = "STOPLOSS HIT"
 
-                    # TRAILING STOPLOSS
+                    # TRAILING
                     elif (
 
                         price <= trailing_sl
@@ -590,6 +648,13 @@ while True:
                         continue
 
                 # =================================================
+                # BUY TIME FILTER
+                # =================================================
+
+                if not buy_allowed():
+                    continue
+
+                # =================================================
                 # MAX POSITION LIMIT
                 # =================================================
 
@@ -597,7 +662,7 @@ while True:
                     continue
 
                 # =================================================
-                # SKIP IF ALREADY OPEN
+                # SKIP OPEN POSITION
                 # =================================================
 
                 if stock in positions:
@@ -655,7 +720,7 @@ while True:
                     continue
 
                 # =================================================
-                # BUY CONDITION
+                # BUY SIGNAL
                 # =================================================
 
                 if confidence >= 70:
@@ -672,11 +737,13 @@ while True:
                     }
 
                     save_position(
+
                         stock,
                         positions[stock]["buy_price"],
                         positions[stock]["qty"],
                         positions[stock]["highest_price"],
                         positions[stock]["partial_booked"]
+
                     )
 
                     place_order(stock, "BUY", qty)
