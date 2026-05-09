@@ -643,7 +643,10 @@ while True:
 
                     save_position(
                         stock,
-                        positions[stock]
+                        positions[stock]["buy_price"],
+                        positions[stock]["qty"],
+                        positions[stock]["highest_price"],
+                        positions[stock]["partial_booked"]
                     )
 
                     place_order(stock, "BUY", qty)
