@@ -3,6 +3,8 @@ import pandas as pd
 import time
 import traceback
 import pytz
+import gc
+
 from datetime import datetime
 from threading import Thread
 
@@ -15,14 +17,13 @@ from db import (
 )
 
 from ai import weights
-from risk import position_size
 from market import market_trend
 from strategy import apply_strategy
 from telegram_control import send
 from broker import place_order
 
 # =========================================================
-# V50 FULL INSTITUTIONAL ENGINE
+# V51 ULTRA INSTITUTIONAL ENGINE
 # =========================================================
 
 CAPITAL = 200000
@@ -135,7 +136,7 @@ except Exception as e:
 
 send(f"""
 
-🚀 V50 FULL INSTITUTIONAL AI ENGINE STARTED
+🚀 V51 ULTRA INSTITUTIONAL AI ENGINE STARTED
 
 ✅ INSTANT EXIT ENGINE ACTIVE
 ✅ TARGET HIT DETECTION ACTIVE
@@ -146,6 +147,8 @@ send(f"""
 ✅ DATABASE CONNECTED
 ✅ RESTART RECOVERY ACTIVE
 ✅ RAILWAY SAFE MODE ACTIVE
+✅ TELEGRAM RETRY ACTIVE
+✅ MEMORY OPTIMIZATION ACTIVE
 ✅ PAPER TRADING MODE ACTIVE
 
 💰 CAPITAL:
@@ -164,7 +167,7 @@ send(f"""
 {FIXED_QUANTITY}
 
 🛡 SYSTEM:
-FULL INSTITUTIONAL GRADE
+ULTRA INSTITUTIONAL GRADE
 
 """)
 
@@ -196,7 +199,8 @@ def market_crash():
             period="2d",
             interval="5m",
             progress=False,
-            auto_adjust=True
+            auto_adjust=True,
+            threads=False
         )
 
         if nifty.empty:
@@ -371,7 +375,8 @@ while True:
                     period="5d",
                     interval="5m",
                     auto_adjust=True,
-                    progress=False
+                    progress=False,
+                    threads=False
 
                 )
 
@@ -416,6 +421,11 @@ while True:
                     # =============================================
 
                     if price > highest:
+
+                        highest = price
+
+                        positions[stock]["highest_price"] = highest
+
                         save_position(
                             stock,
                             positions[stock]["buy_price"],
@@ -423,12 +433,6 @@ while True:
                             positions[stock]["highest_price"],
                             positions[stock]["partial_booked"]
                         )
-
-                        highest = price
-
-                        positions[stock]["highest_price"] = highest
-
-                        save_position(stock, positions[stock])
 
                     # =============================================
                     # PNL
@@ -463,6 +467,7 @@ while True:
                     ):
 
                         positions[stock]["partial_booked"] = True
+
                         save_position(
                             stock,
                             positions[stock]["buy_price"],
@@ -470,8 +475,6 @@ while True:
                             positions[stock]["highest_price"],
                             positions[stock]["partial_booked"]
                         )
-
-                        save_position(stock, positions[stock])
 
                         send(f"""
 
@@ -499,14 +502,23 @@ while True:
 
                     exit_reason = None
 
-                    if pnl_percent >= TARGET_PERCENT:
+                    # TARGET
+                    if price >= round(
+                        bp * (1 + TARGET_PERCENT / 100),
+                        2
+                    ):
 
                         exit_reason = "TARGET ACHIEVED"
 
-                    elif pnl_percent <= STOPLOSS_PERCENT:
+                    # STOPLOSS
+                    elif price <= round(
+                        bp * (1 + STOPLOSS_PERCENT / 100),
+                        2
+                    ):
 
                         exit_reason = "STOPLOSS HIT"
 
+                    # TRAILING STOPLOSS
                     elif (
 
                         price <= trailing_sl
@@ -521,6 +533,9 @@ while True:
                     # =============================================
 
                     if exit_reason:
+
+                        if stock not in positions:
+                            continue
 
                         daily_profit += pnl_amount
 
@@ -613,7 +628,8 @@ while True:
                     period="10d",
                     interval="1h",
                     auto_adjust=True,
-                    progress=False
+                    progress=False,
+                    threads=False
 
                 )
 
@@ -730,6 +746,12 @@ PAPER TRADING
 """)
 
                 continue
+
+        # =====================================================
+        # MEMORY CLEANUP
+        # =====================================================
+
+        gc.collect()
 
         # =====================================================
         # WAIT
