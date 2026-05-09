@@ -1,42 +1,45 @@
 from flask import Flask
-from sqlalchemy import create_engine,text
+from sqlalchemy import create_engine, text
 import os
 
-app=Flask(__name__)
+app = Flask(__name__)
 
-engine=create_engine(os.getenv("DATABASE_URL"))
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True
+)
 
 @app.route("/")
-
 def home():
 
     with engine.begin() as conn:
 
-        trades=conn.execute(text("""
+        trades = conn.execute(text("""
 
         SELECT * FROM trades
         ORDER BY id DESC
-        LIMIT 20
+        LIMIT 50
 
         """)).fetchall()
 
-    html="""
-
-    <h1>🚀 AI Trading Dashboard</h1>
-
+    html = """
+    <h1>🚀 V60 Institutional Dashboard</h1>
+    <hr>
     """
 
     for t in trades:
 
-        html+=f"""
-
+        html += f"""
         <p>
         {t.symbol} |
         {t.action} |
         ₹{t.price} |
-        PNL ₹{t.pnl}
+        Qty {t.qty} |
+        PNL ₹{t.pnl} |
+        {t.reason}
         </p>
-
         """
 
     return html
