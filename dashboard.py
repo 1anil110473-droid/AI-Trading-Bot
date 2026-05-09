@@ -12,34 +12,55 @@ engine = create_engine(
 )
 
 @app.route("/")
+
 def home():
 
     with engine.begin() as conn:
 
         trades = conn.execute(text("""
 
-        SELECT * FROM trades
+        SELECT *
+        FROM trades
         ORDER BY id DESC
-        LIMIT 50
+        LIMIT 20
 
         """)).fetchall()
 
     html = """
-    <h1>🚀 V60 Institutional Dashboard</h1>
-    <hr>
+
+    <h1>🚀 V50 Institutional Dashboard</h1>
+
+    <h3>Recent Trades</h3>
+
     """
 
     for t in trades:
 
         html += f"""
+
         <p>
+
         {t.symbol} |
         {t.action} |
-        ₹{t.price} |
+        ₹{round(t.price,2)} |
         Qty {t.qty} |
-        PNL ₹{t.pnl} |
+        PNL ₹{round(t.pnl,2)} |
         {t.reason}
+
         </p>
+
         """
 
     return html
+
+@app.route("/health")
+
+def health():
+
+    return {
+
+        "status": "ok",
+        "engine": "running",
+        "dashboard": "active"
+
+    }
