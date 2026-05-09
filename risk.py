@@ -1,9 +1,28 @@
-def position_size(capital,confidence,price):
+import math
 
-    risk_percent=0.02
+# =========================================================
+# AI ADAPTIVE QUANTITY ENGINE
+# =========================================================
 
-    allocation=capital*risk_percent*(confidence/100)
+def adaptive_quantity(
+    capital,
+    confidence,
+    price,
+    atr
+):
 
-    qty=max(1,int(allocation/price))
+    risk_per_trade = 0.02
+
+    capital_risk = capital * risk_per_trade
+
+    stop_distance = max(atr, price * 0.01)
+
+    qty = capital_risk / stop_distance
+
+    confidence_boost = confidence / 100
+
+    qty = qty * confidence_boost
+
+    qty = max(1, int(qty))
 
     return qty
