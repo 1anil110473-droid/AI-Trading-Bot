@@ -416,6 +416,13 @@ while True:
                     # =============================================
 
                     if price > highest:
+                        save_position(
+                            stock,
+                            positions[stock]["buy_price"],
+                            positions[stock]["qty"],
+                            positions[stock]["highest_price"],
+                            positions[stock]["partial_booked"]
+                        )
 
                         highest = price
 
@@ -456,6 +463,13 @@ while True:
                     ):
 
                         positions[stock]["partial_booked"] = True
+                        save_position(
+                            stock,
+                            positions[stock]["buy_price"],
+                            positions[stock]["qty"],
+                            positions[stock]["highest_price"],
+                            positions[stock]["partial_booked"]
+                        )
 
                         save_position(stock, positions[stock])
 
