@@ -361,17 +361,35 @@ while True:
 
             hour = now.hour
 
-            if hour >= 16 or hour < 7:
+    # =========================================
+    # WEEKEND MODE
+    # =========================================
 
-                print("Night Deep Sleep Active")
+            if now.weekday() >= 5:
 
-                time.sleep(21600)
+                print("Weekend Sleep Mode Active")
+
+                time.sleep(3600)
+
+    # =========================================
+    # NIGHT MODE
+    # =========================================
+
+            elif hour >= 16 or hour < 7:
+
+                print("Night Mode Active")
+
+                time.sleep(1800)
+
+    # =========================================
+    # PRE-MARKET WAIT
+    # =========================================
 
             else:
 
-                print("Waiting For Market Open")
+                 print("Waiting For Market Open")
 
-                time.sleep(300)
+                 time.sleep(300)
 
             continue
 
