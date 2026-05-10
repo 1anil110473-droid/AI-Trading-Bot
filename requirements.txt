@@ -8,5 +8,3 @@ flask
 gunicorn
 python-dotenv
 requests
-scikit-learn
-plotly
