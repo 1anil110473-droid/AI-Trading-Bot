@@ -43,7 +43,12 @@ PARTIAL_BOOKING_PERCENT = 2
 
 MARKET_CRASH_THRESHOLD = -1.5
 
-HEARTBEAT_INTERVAL = 1800
+# =========================================================
+# PROFESSIONAL HEARTBEAT SYSTEM
+# =========================================================
+
+MARKET_OPEN_HEARTBEAT = 1800       # 30 Minutes
+MARKET_CLOSED_HEARTBEAT = 21600    # 6 Hours
 
 FIXED_QUANTITY = 100
 
@@ -282,7 +287,23 @@ def heartbeat():
 
             now = time.time()
 
-            if now - last_heartbeat >= HEARTBEAT_INTERVAL:
+            # =============================================
+            # DYNAMIC HEARTBEAT MODE
+            # =============================================
+
+            if market_open():
+
+                heartbeat_interval = MARKET_OPEN_HEARTBEAT
+
+            else:
+
+                heartbeat_interval = MARKET_CLOSED_HEARTBEAT
+
+            # =============================================
+            # HEARTBEAT SEND
+            # =============================================
+
+            if now - last_heartbeat >= heartbeat_interval:
 
                 send(f"""
 
