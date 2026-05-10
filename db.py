@@ -67,7 +67,9 @@ def init_db():
             id SERIAL PRIMARY KEY,
             win_rate FLOAT,
             total_profit FLOAT,
-            trades INT
+            trades INT,
+            avg_profit FLOAT,
+            time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
 
@@ -128,6 +130,46 @@ def save_trade(symbol, action, price, qty, pnl, reason):
             "q": qty,
             "pn": pnl,
             "r": reason
+
+        })
+
+# =========================================================
+# SAVE ANALYTICS
+# =========================================================
+
+def save_analytics(
+
+    win_rate,
+    total_profit,
+    trades,
+    avg_profit
+
+):
+
+    with engine.begin() as conn:
+
+        conn.execute(text("""
+
+        INSERT INTO analytics(
+            win_rate,
+            total_profit,
+            trades,
+            avg_profit
+        )
+
+        VALUES(
+            :w,
+            :p,
+            :t,
+            :a
+        )
+
+        """), {
+
+            "w": win_rate,
+            "p": total_profit,
+            "t": trades,
+            "a": avg_profit
 
         })
 
