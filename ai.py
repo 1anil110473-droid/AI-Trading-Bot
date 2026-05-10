@@ -1,5 +1,5 @@
 # =========================================================
-# V53 SELF LEARNING AI ENGINE
+# V54 SELF LEARNING AI ENGINE
 # =========================================================
 
 weights = {
@@ -8,19 +8,22 @@ weights = {
     "RSI": 15,
     "MACD": 25,
     "VWAP": 20,
-    "VOLUME": 15
+    "VOLUME": 15,
+    "SUPPORT": 10,
+    "RESISTANCE": 15,
+    "BREAKOUT": 20
 
 }
 
 # =========================================================
-# LEARNING LIMITS
+# LIMITS
 # =========================================================
 
 MIN_WEIGHT = 5
-MAX_WEIGHT = 40
+MAX_WEIGHT = 50
 
 # =========================================================
-# OPTIMIZE WEIGHTS
+# SELF LEARNING ENGINE
 # =========================================================
 
 def optimize_weights(
@@ -35,16 +38,17 @@ def optimize_weights(
     try:
 
         # =============================================
-        # STRONG PERFORMANCE
+        # HIGH WIN RATE
         # =============================================
 
         if win_rate >= 70:
 
             weights["EMA"] += 1
             weights["MACD"] += 1
+            weights["BREAKOUT"] += 1
 
         # =============================================
-        # WEAK PERFORMANCE
+        # LOW WIN RATE
         # =============================================
 
         elif win_rate <= 40:
@@ -58,10 +62,10 @@ def optimize_weights(
 
         if avg_profit > 1000:
 
-            weights["MACD"] += 1
+            weights["BREAKOUT"] += 1
 
         # =============================================
-        # SAFETY LIMITS
+        # LIMITS
         # =============================================
 
         for k in weights:
@@ -78,7 +82,7 @@ def optimize_weights(
         return weights
 
 # =========================================================
-# MARKET REGIME AI
+# MARKET REGIME
 # =========================================================
 
 def market_regime(volatility):
@@ -98,14 +102,16 @@ def market_regime(volatility):
         return "NORMAL_VOLATILITY"
 
 # =========================================================
-# CONFIDENCE BOOSTER
+# ADAPTIVE CONFIDENCE BOOST
 # =========================================================
 
 def confidence_boost(
 
     base_score,
     trend,
-    volatility
+    volatility,
+    volume_spike=False,
+    breakout=False
 
 ):
 
@@ -118,13 +124,31 @@ def confidence_boost(
         # =========================================
 
         if trend == "BULLISH":
+
             score += 5
 
         # =========================================
-        # HIGH VOLATILITY FILTER
+        # VOLUME SPIKE BOOST
+        # =========================================
+
+        if volume_spike:
+
+            score += 10
+
+        # =========================================
+        # BREAKOUT BOOST
+        # =========================================
+
+        if breakout:
+
+            score += 10
+
+        # =========================================
+        # HIGH VOLATILITY PENALTY
         # =========================================
 
         if volatility >= 3:
+
             score -= 5
 
         return min(100, max(0, score))
