@@ -1,3 +1,7 @@
+# =========================================================
+# V53 SELF LEARNING AI ENGINE
+# =========================================================
+
 weights = {
 
     "EMA": 25,
@@ -7,3 +11,124 @@ weights = {
     "VOLUME": 15
 
 }
+
+# =========================================================
+# LEARNING LIMITS
+# =========================================================
+
+MIN_WEIGHT = 5
+MAX_WEIGHT = 40
+
+# =========================================================
+# OPTIMIZE WEIGHTS
+# =========================================================
+
+def optimize_weights(
+
+    win_rate,
+    avg_profit=0
+
+):
+
+    global weights
+
+    try:
+
+        # =============================================
+        # STRONG PERFORMANCE
+        # =============================================
+
+        if win_rate >= 70:
+
+            weights["EMA"] += 1
+            weights["MACD"] += 1
+
+        # =============================================
+        # WEAK PERFORMANCE
+        # =============================================
+
+        elif win_rate <= 40:
+
+            weights["RSI"] -= 1
+            weights["VWAP"] -= 1
+
+        # =============================================
+        # HIGH PROFIT BOOST
+        # =============================================
+
+        if avg_profit > 1000:
+
+            weights["MACD"] += 1
+
+        # =============================================
+        # SAFETY LIMITS
+        # =============================================
+
+        for k in weights:
+
+            weights[k] = max(
+                MIN_WEIGHT,
+                min(MAX_WEIGHT, weights[k])
+            )
+
+        return weights
+
+    except:
+
+        return weights
+
+# =========================================================
+# MARKET REGIME AI
+# =========================================================
+
+def market_regime(volatility):
+
+    try:
+
+        if volatility >= 3:
+            return "HIGH_VOLATILITY"
+
+        elif volatility >= 1.5:
+            return "NORMAL_VOLATILITY"
+
+        return "LOW_VOLATILITY"
+
+    except:
+
+        return "NORMAL_VOLATILITY"
+
+# =========================================================
+# CONFIDENCE BOOSTER
+# =========================================================
+
+def confidence_boost(
+
+    base_score,
+    trend,
+    volatility
+
+):
+
+    try:
+
+        score = base_score
+
+        # =========================================
+        # BULLISH BOOST
+        # =========================================
+
+        if trend == "BULLISH":
+            score += 5
+
+        # =========================================
+        # HIGH VOLATILITY FILTER
+        # =========================================
+
+        if volatility >= 3:
+            score -= 5
+
+        return min(100, max(0, score))
+
+    except:
+
+        return base_score
