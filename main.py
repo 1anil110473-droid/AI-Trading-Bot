@@ -709,15 +709,14 @@ while True:
 
                 # =================================================
                 # STRATEGY
-                # =================================================
+                # =================================================                                                                     
+                result = apply_strategy(df, weights)
 
-                   result = apply_strategy(df, weights)
+                score = result["score"]
 
-                   score = result["score"]
+                reasons = result["reasons"]
 
-                   reasons = result["reasons"]
-
-                   confidence = score
+                confidence = score
 
                 # =================================================
                 # TREND FILTER
