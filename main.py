@@ -603,7 +603,7 @@ while True:
                      # TARGET EXIT
                      # =============================================
 
-                     target_price = round(
+                      target_price = round(
 
                         bp * (
                             1 + TARGET_PERCENT / 100
