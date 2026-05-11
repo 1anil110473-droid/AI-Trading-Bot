@@ -711,9 +711,13 @@ while True:
                 # STRATEGY
                 # =================================================
 
-                score, reasons = apply_strategy(df, weights)
+                 result = apply_strategy(df, weights)
 
-                confidence = min(score, 100)
+                 score = result["score"]
+
+                 reasons = result["reasons"]
+
+                 confidence = score
 
                 # =================================================
                 # TREND FILTER
