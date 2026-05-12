@@ -290,37 +290,51 @@ def load_positions():
 
 def update_daily_pnl(date, pnl):
 
-    import sqlite3
+    with engine.begin() as conn:
 
-    conn = sqlite3.connect("trading.db")
+        # =============================================
+        # CREATE TABLE
+        # =============================================
 
-    c = conn.cursor()
+        conn.execute(text("""
 
-    c.execute("""
-
-        CREATE TABLE IF NOT EXISTS daily_pnl (
+        CREATE TABLE IF NOT EXISTS daily_pnl(
 
             date TEXT PRIMARY KEY,
-            pnl REAL
+            pnl FLOAT
 
         )
 
-    """)
+        """))
 
-    c.execute("""
+        # =============================================
+        # INSERT / UPDATE
+        # =============================================
 
-        INSERT OR REPLACE INTO daily_pnl (
+        conn.execute(text("""
+
+        INSERT INTO daily_pnl(
             date,
             pnl
         )
 
-        VALUES (?, ?)
+        VALUES(
+            :d,
+            :p
+        )
 
-    """, (date, pnl))
+        ON CONFLICT(date)
 
-    conn.commit()
+        DO UPDATE SET
 
-    conn.close()
+            pnl = EXCLUDED.pnl
+
+        """), {
+
+            "d": date,
+            "p": pnl
+
+        })
 
 
 # =========================================================
@@ -329,75 +343,114 @@ def update_daily_pnl(date, pnl):
 
 def get_lifetime_stats():
 
-    import sqlite3
+    with engine.begin() as conn:
 
-    conn = sqlite3.connect("trading.db")
+        # =============================================
+        # TOTAL TRADES
+        # =============================================
 
-    c = conn.cursor()
-
-    c.execute("""
+        result = conn.execute(text("""
 
         SELECT COUNT(*)
+
         FROM trades
-        WHERE action IN ('SELL', 'PARTIAL SELL')
 
-    """)
+        WHERE action IN (
+            'SELL',
+            'PARTIAL SELL'
+        )
 
-    total_trades = c.fetchone()[0] or 0
+        """))
 
-    c.execute("""
+        total_trades = result.scalar() or 0
+
+        # =============================================
+        # LIFETIME PNL
+        # =============================================
+
+        result = conn.execute(text("""
 
         SELECT SUM(pnl)
+
         FROM trades
-        WHERE action IN ('SELL', 'PARTIAL SELL')
 
-    """)
+        WHERE action IN (
+            'SELL',
+            'PARTIAL SELL'
+        )
 
-    lifetime_pnl = c.fetchone()[0]
+        """))
 
-    if lifetime_pnl is None:
+        lifetime_pnl = result.scalar()
 
-        lifetime_pnl = 0
+        if lifetime_pnl is None:
 
-    c.execute("""
+            lifetime_pnl = 0
+
+        # =============================================
+        # WIN TRADES
+        # =============================================
+
+        result = conn.execute(text("""
 
         SELECT COUNT(*)
+
         FROM trades
+
         WHERE pnl > 0
-        AND action IN ('SELL', 'PARTIAL SELL')
 
-    """)
+        AND action IN (
+            'SELL',
+            'PARTIAL SELL'
+        )
 
-    win_trades = c.fetchone()[0] or 0
+        """))
 
-    c.execute("""
+        win_trades = result.scalar() or 0
+
+        # =============================================
+        # LOSS TRADES
+        # =============================================
+
+        result = conn.execute(text("""
 
         SELECT COUNT(*)
+
         FROM trades
+
         WHERE pnl <= 0
-        AND action IN ('SELL', 'PARTIAL SELL')
 
-    """)
+        AND action IN (
+            'SELL',
+            'PARTIAL SELL'
+        )
 
-    loss_trades = c.fetchone()[0] or 0
+        """))
 
-    conn.close()
+        loss_trades = result.scalar() or 0
+
+    # =============================================
+    # ACCURACY
+    # =============================================
 
     accuracy = 0
 
     if total_trades > 0:
 
         accuracy = round(
+
             (win_trades / total_trades) * 100,
             2
+
         )
 
     return {
 
         "total_trades": total_trades,
-        "lifetime_pnl": round(lifetime_pnl, 2),
+        "lifetime_pnl": round(float(lifetime_pnl), 2),
         "win_trades": win_trades,
         "loss_trades": loss_trades,
         "accuracy": accuracy
 
     }
+    
