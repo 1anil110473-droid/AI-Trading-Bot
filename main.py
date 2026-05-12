@@ -700,9 +700,9 @@ while True:
                        # MARKET CRASH SAFETY EXIT
                        # =========================================================
 
-                         elif market_crash():
+                       elif market_crash():
 
-                             exit_reason = "MARKET CRASH EXIT"
+                           exit_reason = "MARKET CRASH EXIT"
 
 # =========================================================
 # EXIT EXECUTION
