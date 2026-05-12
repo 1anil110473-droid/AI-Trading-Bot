@@ -13,7 +13,9 @@ from db import (
     save_trade,
     load_positions,
     save_position,
-    delete_position
+    delete_position,
+    update_daily_pnl,
+    get_lifetime_stats
 )
 
 from ai import weights
@@ -767,16 +769,23 @@ ACTIVE
 
                         daily_profit += pnl_amount
 
-                        place_order(stock, "SELL", qty)
+# =========================================
+# DAILY PNL SAVE (ADD THIS)
+# =========================================
 
-                        save_trade(
-                            stock,
-                            "SELL",
-                            price,
-                            qty,
-                            pnl_amount,
-                            exit_reason
-                        )
+today = datetime.now(TIMEZONE).strftime("%Y-%m-%d")
+update_daily_pnl(today, daily_profit)
+
+place_order(stock, "SELL", qty)
+
+save_trade(
+    stock,
+    "SELL",
+    price,
+    qty,
+    pnl_amount,
+    exit_reason
+)
 
                         send(f"""
 
