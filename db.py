@@ -283,3 +283,22 @@ def load_positions():
     print("✅ POSITIONS RESTORED")
 
     return positions
+def save_daily_pnl(date, pnl):
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS daily_pnl (
+            date TEXT PRIMARY KEY,
+            pnl REAL
+        )
+    """)
+
+    cur.execute("""
+        INSERT OR REPLACE INTO daily_pnl (date, pnl)
+        VALUES (?, ?)
+    """, (date, pnl))
+
+    conn.commit()
+    conn.close()
