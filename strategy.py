@@ -6,7 +6,8 @@ from ta.volume import VolumeWeightedAveragePrice
 from ta.volatility import AverageTrueRange
 
 # =========================================================
-# V54 INSTITUTIONAL STRATEGY ENGINE
+# V55 INSTITUTIONAL STRATEGY ENGINE
+# UPGRADED + SAFE EXIT SUPPORT
 # =========================================================
 
 def apply_strategy(df, weights):
@@ -94,10 +95,22 @@ def apply_strategy(df, weights):
     # EMA
     # =====================================================
 
+    ema_bullish = False
+    ema_bearish = False
+
     if last["EMA20"] > last["EMA50"]:
 
+        ema_bullish = True
+
         score += weights["EMA"]
+
         reasons.append("EMA Bullish")
+
+    elif last["EMA20"] < last["EMA50"]:
+
+        ema_bearish = True
+
+        reasons.append("EMA Bearish")
 
     # =====================================================
     # RSI
@@ -106,7 +119,12 @@ def apply_strategy(df, weights):
     if last["RSI"] > 55:
 
         score += weights["RSI"]
+
         reasons.append("RSI Strong")
+
+    elif last["RSI"] < 40:
+
+        reasons.append("RSI Weak")
 
     # =====================================================
     # MACD
@@ -115,7 +133,12 @@ def apply_strategy(df, weights):
     if last["MACD"] > last["MACD_SIGNAL"]:
 
         score += weights["MACD"]
+
         reasons.append("MACD Bullish")
+
+    else:
+
+        reasons.append("MACD Bearish")
 
     # =====================================================
     # VWAP
@@ -124,7 +147,12 @@ def apply_strategy(df, weights):
     if last["Close"] > last["VWAP"]:
 
         score += weights["VWAP"]
+
         reasons.append("Above VWAP")
+
+    else:
+
+        reasons.append("Below VWAP")
 
     # =====================================================
     # VOLUME SPIKE ENGINE
@@ -137,6 +165,7 @@ def apply_strategy(df, weights):
     if volume_spike:
 
         score += weights["VOLUME"]
+
         reasons.append("Volume Spike")
 
     # =====================================================
@@ -154,6 +183,7 @@ def apply_strategy(df, weights):
     if last["Close"] > support * 1.01:
 
         score += weights["SUPPORT"]
+
         reasons.append("Support Holding")
 
     # =====================================================
@@ -176,6 +206,41 @@ def apply_strategy(df, weights):
         reasons.append("Resistance Breakout")
 
     # =====================================================
+    # RESISTANCE REJECTION
+    # =====================================================
+
+    resistance_rejection = False
+
+    if (
+
+        last["High"] >= resistance * 0.998
+        and last["Close"] < resistance
+        and last["Close"] < last["Open"]
+
+    ):
+
+        resistance_rejection = True
+
+        reasons.append("Resistance Rejection")
+
+    # =====================================================
+    # SUPPORT BOUNCE
+    # =====================================================
+
+    bounce = False
+
+    if (
+
+        last["Low"] <= support * 1.002
+        and last["Close"] > support
+
+    ):
+
+        bounce = True
+
+        reasons.append("Support Bounce")
+
+    # =====================================================
     # PREVIOUS DAY BREAKOUT
     # =====================================================
 
@@ -186,11 +251,13 @@ def apply_strategy(df, weights):
     if last["Close"] > prev_high:
 
         score += 10
+
         reasons.append("Previous High Breakout")
 
     if last["Close"] < prev_low:
 
         score -= 10
+
         reasons.append("Previous Low Breakdown")
 
     # =====================================================
@@ -273,17 +340,45 @@ def apply_strategy(df, weights):
         reasons.append("VWAP Trend Alignment")
 
     # =====================================================
-    # FINAL
+    # FINAL SCORE SAFETY
+    # =====================================================
+
+    final_score = max(0, min(100, score))
+
+    # =====================================================
+    # FINAL RETURN
     # =====================================================
 
     return {
 
-        "score": max(0, min(100, score)),
+        "score": final_score,
+
         "reasons": reasons,
+
         "atr": float(last["ATR"]),
+
+        "atr_percent": float(atr_percent),
+
         "support": float(support),
+
         "resistance": float(resistance),
+
+        "vwap": float(last["VWAP"]),
+
+        "ema20": float(last["EMA20"]),
+
+        "ema50": float(last["EMA50"]),
+
+        "ema_bullish": ema_bullish,
+
+        "ema_bearish": ema_bearish,
+
         "volume_spike": volume_spike,
-        "breakout": breakout
+
+        "breakout": breakout,
+
+        "bounce": bounce,
+
+        "resistance_rejection": resistance_rejection
 
     }
