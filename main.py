@@ -785,6 +785,9 @@ ACTIVE
 📉 STOCK:
 {stock}
 
+💰 ENTRY PRICE:
+₹{bp}
+
 💰 EXIT PRICE:
 ₹{price}
 
