@@ -687,22 +687,22 @@ while True:
                        # VWAP BREAKDOWN EXIT
                        # =========================================================
 
-                       elif (
+                        elif (
 
-                           price < result["vwap"]
-                           and pnl_percent > 1
+                            price < result["vwap"]
+                            and pnl_percent > 1
 
-                       ):
+                        ):
 
-                           exit_reason = "VWAP BREAKDOWN"
+                            exit_reason = "VWAP BREAKDOWN"
 
-                      # =========================================================
-                      # MARKET CRASH SAFETY EXIT
-                      # =========================================================
+                       # =========================================================
+                       # MARKET CRASH SAFETY EXIT
+                       # =========================================================
 
-                      elif market_crash():
+                       elif market_crash():
 
-                          exit_reason = "MARKET CRASH EXIT"
+                           exit_reason = "MARKET CRASH EXIT"
 
 # =========================================================
 # EXIT EXECUTION
