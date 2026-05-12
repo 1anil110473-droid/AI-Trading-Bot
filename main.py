@@ -612,7 +612,7 @@ while True:
 
                      )
 
-                     if price >= target_price:
+                         if price >= target_price:
 
                          exit_reason = "TARGET ACHIEVED"
 
