@@ -656,70 +656,70 @@ while True:
                     # RESISTANCE REJECTION EXIT
                     # =============================================
 
-                       resistance = result.get("resistance", price)
+                        resistance = result.get("resistance", price)
 
-                       if (
+                        if (
 
-                           exit_reason is None
-                           and pnl_percent > 1
-                           and price < resistance * 0.995
+                            exit_reason is None
+                            and pnl_percent > 1
+                            and price < resistance * 0.995
 
-                       ):
+                        ):
 
-                           exit_reason = "RESISTANCE REJECTION"
+                            exit_reason = "RESISTANCE REJECTION"
 
                     # =============================================
                     # EMA WEAKNESS EXIT
                     # =============================================
 
-                       ema20 = float(
-                          df["EMA20"].iloc[-1]
-                       )
+                        ema20 = float(
+                           df["EMA20"].iloc[-1]
+                        )
 
-                       ema50 = float(
-                          df["EMA50"].iloc[-1]
-                       )
+                        ema50 = float(
+                           df["EMA50"].iloc[-1]
+                        )
 
-                       if (
+                        if (
 
-                           exit_reason is None
-                           and ema20 < ema50
-                           and pnl_percent > 0
+                            exit_reason is None
+                            and ema20 < ema50
+                            and pnl_percent > 0
 
-                       ):
+                        ):
 
-                           exit_reason = "EMA TREND REVERSAL"
+                            exit_reason = "EMA TREND REVERSAL"
 
                   # =============================================
                   # VWAP BREAKDOWN EXIT
                   # =============================================
 
-                       vwap = float(
-                         df["VWAP"].iloc[-1]
-                       )
+                        vwap = float(
+                          df["VWAP"].iloc[-1]
+                        )
 
-                       if (
+                        if (
 
-                           exit_reason is None
-                           and price < vwap
-                           and pnl_percent > 1
+                            exit_reason is None
+                            and price < vwap
+                            and pnl_percent > 1
 
-                       ):
+                        ):
 
-                           exit_reason = "VWAP BREAKDOWN"
+                            exit_reason = "VWAP BREAKDOWN"
 
                    # =============================================
                    # MARKET CRASH SAFETY EXIT
                    # =============================================
 
-                      if (
+                       if (
 
-                          exit_reason is None
-                          and market_crash()
+                           exit_reason is None
+                           and market_crash()
 
-                      ):
+                       ):
 
-                          exit_reason = "MARKET CRASH EXIT"
+                           exit_reason = "MARKET CRASH EXIT"
 
                     # =============================================
                     # EXIT EXECUTION
