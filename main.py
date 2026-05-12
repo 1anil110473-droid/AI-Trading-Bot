@@ -592,69 +592,69 @@ while True:
 🛡 PROFIT LOCK ACTIVE
 
 """)
-                            # =========================================================
-                            # INSTITUTIONAL EXIT ENGINE
-                            # =========================================================
+                         # =========================================================
+                         # INSTITUTIONAL EXIT ENGINE
+                         # =========================================================
 
-                            exit_reason = None
+                         exit_reason = None
 
-                            # =========================================================
-                            # TARGET EXIT
-                            # =========================================================
+                         # =========================================================
+                         # TARGET EXIT
+                         # =========================================================
 
-                            target_price = round(
+                         target_price = round(
 
-                                bp * (
-                                    1 + TARGET_PERCENT / 100
-                                        ),
-                                        2
+                             bp * (
+                                 1 + TARGET_PERCENT / 100
+                                     ),
+                                     2
 
-                            )
+                         )
 
-                            if price >= target_price:
+                         if price >= target_price:
 
-                                exit_reason = "TARGET ACHIEVED"
+                             exit_reason = "TARGET ACHIEVED"
 
-                            # =========================================================
-                            # HARD STOPLOSS
-                            # =========================================================
+                         # =========================================================
+                         # HARD STOPLOSS
+                         # =========================================================
 
-                            elif price <= round(
+                         elif price <= round(
 
-                                bp * (
-                                    1 + STOPLOSS_PERCENT / 100
-                                        ),
-                                        2
+                             bp * (
+                                 1 + STOPLOSS_PERCENT / 100
+                                     ),
+                                     2
 
-                            ):
+                         ):
 
-                               exit_reason = "STOPLOSS HIT"
+                             exit_reason = "STOPLOSS HIT"
 
-                          # =========================================================
-                          # TRAILING STOPLOSS
-                          # =========================================================
+                         # =========================================================
+                         # TRAILING STOPLOSS
+                         # =========================================================
 
-                          elif (
+                         elif (
 
-                              price <= trailing_sl
-                              and pnl_percent > 0
+                             price <= trailing_sl
+                             and pnl_percent > 0
 
-                          ):
+                         ):
 
-                              exit_reason = "TRAILING STOPLOSS HIT"
+                             exit_reason = "TRAILING STOPLOSS HIT"
 
-                          # =========================================================
-                          # RESISTANCE REJECTION EXIT
-                          # =========================================================
+                         # =========================================================
+                         # RESISTANCE REJECTION EXIT
+                         # =========================================================
 
-                          elif (
+                         elif (
 
-                              result["resistance_rejection"]
-                              and pnl_percent > 1
+                             result["resistance_rejection"]
+                             and pnl_percent > 1
 
-                          ):
+                         ):
 
-                              exit_reason = "RESISTANCE REJECTION"
+                             exit_reason = "RESISTANCE REJECTION"
 
                          # =========================================================
                          # SUPPORT BREAKDOWN EXIT
