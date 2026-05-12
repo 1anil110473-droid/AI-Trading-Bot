@@ -561,7 +561,7 @@ while True:
 
 ):
 
-    partial_qty = qty // 2
+                        partial_qty = qty // 2
 
     # =========================================
     # EXECUTE PARTIAL SELL
