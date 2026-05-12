@@ -592,116 +592,117 @@ while True:
 🛡 PROFIT LOCK ACTIVE
 
 """)
-                         # =========================================================
-                         # INSTITUTIONAL EXIT ENGINE
-                         # =========================================================
+                        
+                        # =========================================================
+                        # INSTITUTIONAL EXIT ENGINE
+                        # =========================================================
 
-                         exit_reason = None
-
-                         # =========================================================
-                         # TARGET EXIT
-                         # =========================================================
-
-                         target_price = round(
-
-                             bp * (
-                                 1 + TARGET_PERCENT / 100
-                                     ),
-                                     2
-
-                         )
-
-                         if price >= target_price:
-
-                             exit_reason = "TARGET ACHIEVED"
-
-                         # =========================================================
-                         # HARD STOPLOSS
-                         # =========================================================
-
-                         elif price <= round(
-
-                             bp * (
-                                 1 + STOPLOSS_PERCENT / 100
-                                     ),
-                                     2
-
-                         ):
-
-                             exit_reason = "STOPLOSS HIT"
-
-                         # =========================================================
-                         # TRAILING STOPLOSS
-                         # =========================================================
-
-                         elif (
-
-                             price <= trailing_sl
-                             and pnl_percent > 0
-
-                         ):
-
-                             exit_reason = "TRAILING STOPLOSS HIT"
-
-                         # =========================================================
-                         # RESISTANCE REJECTION EXIT
-                         # =========================================================
-
-                         elif (
-
-                             result["resistance_rejection"]
-                             and pnl_percent > 1
-
-                         ):
-
-                             exit_reason = "RESISTANCE REJECTION"
-
-                         # =========================================================
-                         # SUPPORT BREAKDOWN EXIT
-                         # =========================================================
-
-                         elif (
-
-                             price < result["support"]
-                             and pnl_percent < 0
-
-                         ):
-
-                             exit_reason = "SUPPORT BREAKDOWN"
+                        exit_reason = None
 
                         # =========================================================
-                        # EMA TREND REVERSAL EXIT
+                        # TARGET EXIT
+                        # =========================================================
+
+                        target_price = round(
+
+                            bp * (
+                                1 + TARGET_PERCENT / 100
+                                    ),
+                                    2
+
+                        )
+
+                        if price >= target_price:
+
+                            exit_reason = "TARGET ACHIEVED"
+
+                        # =========================================================
+                        # HARD STOPLOSS
+                        # =========================================================
+
+                        elif price <= round(
+
+                            bp * (
+                                1 + STOPLOSS_PERCENT / 100
+                                    ),
+                                    2
+
+                        ):
+
+                            exit_reason = "STOPLOSS HIT"
+
+                        # =========================================================
+                        # TRAILING STOPLOSS
                         # =========================================================
 
                         elif (
 
-                            result["ema_bearish"]
-                            and pnl_percent > 0.5
+                            price <= trailing_sl
+                            and pnl_percent > 0
 
                         ):
 
-                            exit_reason = "EMA TREND REVERSAL"
+                            exit_reason = "TRAILING STOPLOSS HIT"
+
+                        # =========================================================
+                        # RESISTANCE REJECTION EXIT
+                        # =========================================================
+
+                        elif (
+
+                            result["resistance_rejection"]
+                            and pnl_percent > 1
+
+                        ):
+
+                            exit_reason = "RESISTANCE REJECTION"
+
+                        # =========================================================
+                        # SUPPORT BREAKDOWN EXIT
+                        # =========================================================
+
+                        elif (
+
+                            price < result["support"]
+                            and pnl_percent < 0
+
+                        ):
+
+                            exit_reason = "SUPPORT BREAKDOWN"
 
                        # =========================================================
-                       # VWAP BREAKDOWN EXIT
+                       # EMA TREND REVERSAL EXIT
                        # =========================================================
 
                        elif (
 
-                           price < result["vwap"]
-                           and pnl_percent > 1
+                           result["ema_bearish"]
+                           and pnl_percent > 0.5
 
                        ):
 
-                           exit_reason = "VWAP BREAKDOWN"
+                           exit_reason = "EMA TREND REVERSAL"
 
                       # =========================================================
-                      # MARKET CRASH SAFETY EXIT
+                      # VWAP BREAKDOWN EXIT
                       # =========================================================
 
-                      elif market_crash():
+                      elif (
 
-                          exit_reason = "MARKET CRASH EXIT"
+                          price < result["vwap"]
+                          and pnl_percent > 1
+
+                      ):
+
+                          exit_reason = "VWAP BREAKDOWN"
+
+                     # =========================================================
+                     # MARKET CRASH SAFETY EXIT
+                     # =========================================================
+
+                     elif market_crash():
+
+                         exit_reason = "MARKET CRASH EXIT"
 
 # =========================================================
 # EXIT EXECUTION
