@@ -670,39 +670,39 @@ while True:
 
                             exit_reason = "SUPPORT BREAKDOWN"
 
+                        # =========================================================
+                        # EMA TREND REVERSAL EXIT
+                        # =========================================================
+
+                        elif (
+
+                            result["ema_bearish"]
+                            and pnl_percent > 0.5
+
+                        ):
+
+                            exit_reason = "EMA TREND REVERSAL"
+
                        # =========================================================
-                       # EMA TREND REVERSAL EXIT
+                       # VWAP BREAKDOWN EXIT
                        # =========================================================
 
                        elif (
 
-                           result["ema_bearish"]
-                           and pnl_percent > 0.5
+                           price < result["vwap"]
+                           and pnl_percent > 1
 
                        ):
 
-                           exit_reason = "EMA TREND REVERSAL"
+                           exit_reason = "VWAP BREAKDOWN"
 
                       # =========================================================
-                      # VWAP BREAKDOWN EXIT
+                      # MARKET CRASH SAFETY EXIT
                       # =========================================================
 
-                      elif (
+                      elif market_crash():
 
-                          price < result["vwap"]
-                          and pnl_percent > 1
-
-                      ):
-
-                          exit_reason = "VWAP BREAKDOWN"
-
-                     # =========================================================
-                     # MARKET CRASH SAFETY EXIT
-                     # =========================================================
-
-                     elif market_crash():
-
-                         exit_reason = "MARKET CRASH EXIT"
+                          exit_reason = "MARKET CRASH EXIT"
 
 # =========================================================
 # EXIT EXECUTION
