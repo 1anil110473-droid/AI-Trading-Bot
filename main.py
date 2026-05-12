@@ -551,7 +551,7 @@ while True:
                     )
 
                     # =============================================
-                    # PARTIAL PROFIT
+                    # REAL PARTIAL PROFIT BOOKING
                     # =============================================
 
                     if (
@@ -563,61 +563,71 @@ while True:
 
                         partial_qty = qty // 2
 
-    # =========================================
-    # EXECUTE PARTIAL SELL
-    # =========================================
+                        # =========================================
+                        # EXECUTE PARTIAL SELL
+                        # =========================================
 
-                       place_order(stock, "SELL", partial_qty)
+                        place_order(stock, "SELL", partial_qty)
 
-    # =========================================
-    # UPDATE REMAINING POSITION
-    # =========================================
+                        # =========================================
+                        # UPDATE REMAINING POSITION
+                        # =========================================
 
-                      remaining_qty = qty - partial_qty
+                        remaining_qty = qty - partial_qty
 
-                      positions[stock]["qty"] = remaining_qty
+                        positions[stock]["qty"] = remaining_qty
 
-                      positions[stock]["partial_booked"] = True
+                        positions[stock]["partial_booked"] = True
 
-    # =========================================
-    # SAVE UPDATED POSITION
-    # =========================================
+                        qty = remaining_qty
 
-                     save_position(
+                        # =========================================
+                        # SAVE UPDATED POSITION
+                        # =========================================
 
-                         stock,
-                         positions[stock]["buy_price"],
-                         positions[stock]["qty"],
-                         positions[stock]["highest_price"],
-                         positions[stock]["partial_booked"]
+                        save_position(
 
-                     )
+                            stock,
+                            positions[stock]["buy_price"],
+                            positions[stock]["qty"],
+                            positions[stock]["highest_price"],
+                            positions[stock]["partial_booked"]
 
-    # =========================================
-    # SAVE TRADE
-    # =========================================
+                        )
 
-                   partial_pnl = round(
-                       ((price - bp) * partial_qty),
-                           2
-                   )
+                        # =========================================
+                        # PARTIAL PNL
+                        # =========================================
 
-                   save_trade(
+                        partial_pnl = round(
 
-                       stock,
-                       "PARTIAL SELL",
-                       price,
-                       partial_qty,
-                       partial_pnl,
-                       "PARTIAL PROFIT BOOKING"
+                            ((price - bp) * partial_qty),
+                            2
 
-                  )
+                        )
 
-    # =========================================
-    # TELEGRAM ALERT
-    # =========================================
+                        daily_profit += partial_pnl
 
-                  send(f"""
+                        # =========================================
+                        # SAVE TRADE
+                        # =========================================
+
+                        save_trade(
+
+                            stock,
+                            "PARTIAL SELL",
+                            price,
+                            partial_qty,
+                            partial_pnl,
+                            "PARTIAL PROFIT BOOKING"
+
+                        )
+
+                        # =========================================
+                        # TELEGRAM ALERT
+                        # =========================================
+
+                        send(f"""
 
 🟡 REAL PARTIAL PROFIT BOOKING
 
@@ -641,6 +651,9 @@ while True:
 
 📊 RETURN:
 {pnl_percent}%
+
+💰 DAILY PROFIT:
+₹{round(daily_profit,2)}
 
 🛡 REMAINING POSITION:
 ACTIVE
