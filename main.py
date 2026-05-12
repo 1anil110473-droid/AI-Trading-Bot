@@ -592,134 +592,181 @@ while True:
 🛡 PROFIT LOCK ACTIVE
 
 """)
+                         # =========================================================
+                         # INSTITUTIONAL EXIT ENGINE
+                         # =========================================================
 
-                     # =============================================
-                     # INSTITUTIONAL EXIT ENGINE
-                     # =============================================
+                         exit_reason = None
 
-                        exit_reason = None
+                         # =========================================================
+                         # TARGET EXIT
+                         # =========================================================
 
-                     # =============================================
-                     # TARGET EXIT
-                     # =============================================
+                         target_price = round(
 
-                        target_price = round(
+                             bp * (
+                                 1 + TARGET_PERCENT / 100
+                                     ),
+                                     2
 
-                           bp * (
-                               1 + TARGET_PERCENT / 100
-                           ),
-                           2
+                         )
 
-                        )
+                         if price >= target_price:
 
-                        if price >= target_price:
+                             exit_reason = "TARGET ACHIEVED"
 
-                            exit_reason = "TARGET ACHIEVED"
+                         # =========================================================
+                         # HARD STOPLOSS
+                         # =========================================================
 
-                     # =============================================
-                     # HARD STOPLOSS
-                     # =============================================
+                         elif price <= round(
 
-                        stoploss_price = round(
+                             bp * (
+                                 1 + STOPLOSS_PERCENT / 100
+                                     ),
+                                     2
 
-                           bp * (
-                               1 + STOPLOSS_PERCENT / 100
-                           ),
-                           2
+                         ):
 
-                        )
+                            exit_reason = "STOPLOSS HIT"
 
-                        if (
+                       # =========================================================
+                       # TRAILING STOPLOSS
+                       # =========================================================
 
-                              exit_reason is None
-                              and price <= stoploss_price
+                       elif (
 
-                        ):
+                           price <= trailing_sl
+                           and pnl_percent > 0
 
-                              exit_reason = "STOPLOSS HIT"
+                       ):
 
-                    # =============================================
-                    # TRAILING STOPLOSS
-                    # =============================================
+                           exit_reason = "TRAILING STOPLOSS HIT"
 
-                        if (
+                       # =========================================================
+                       # RESISTANCE REJECTION EXIT
+                       # =========================================================
 
-                            exit_reason is None
-                            and price <= trailing_sl
-                            and pnl_percent > 0
+                       elif (
 
-                        ):
+                           result["resistance_rejection"]
+                           and pnl_percent > 1
 
-                            exit_reason = "TRAILING STOPLOSS HIT"
+                       ):
 
-                    # =============================================
-                    # RESISTANCE REJECTION EXIT
-                    # =============================================
+                           exit_reason = "RESISTANCE REJECTION"
 
-                        resistance = result.get("resistance", price)
+                      # =========================================================
+                      # SUPPORT BREAKDOWN EXIT
+                      # =========================================================
 
-                        if (
+                      elif (
 
-                            exit_reason is None
-                            and pnl_percent > 1
-                            and price < resistance * 0.995
+                          price < result["support"]
+                          and pnl_percent < 0
 
-                        ):
+                      ):
 
-                            exit_reason = "RESISTANCE REJECTION"
+                         exit_reason = "SUPPORT BREAKDOWN"
 
-                    # =============================================
-                    # EMA WEAKNESS EXIT
-                    # =============================================
+                     # =========================================================
+                     # EMA TREND REVERSAL EXIT
+                     # =========================================================
 
-                        ema20 = float(
-                           df["EMA20"].iloc[-1]
-                        )
+                     elif (
 
-                        ema50 = float(
-                           df["EMA50"].iloc[-1]
-                        )
+                         result["ema_bearish"]
+                         and pnl_percent > 0.5
 
-                        if (
+                     ):
 
-                            exit_reason is None
-                            and ema20 < ema50
-                            and pnl_percent > 0
+                         exit_reason = "EMA TREND REVERSAL"
 
-                        ):
+                    # =========================================================
+                    # VWAP BREAKDOWN EXIT
+                    # =========================================================
 
-                            exit_reason = "EMA TREND REVERSAL"
+                    elif (
 
-                  # =============================================
-                  # VWAP BREAKDOWN EXIT
-                  # =============================================
+                        price < result["vwap"]
+                        and pnl_percent > 1
 
-                        vwap = float(
-                          df["VWAP"].iloc[-1]
-                        )
+                    ):
 
-                        if (
+                        exit_reason = "VWAP BREAKDOWN"
 
-                            exit_reason is None
-                            and price < vwap
-                            and pnl_percent > 1
-
-                        ):
-
-                            exit_reason = "VWAP BREAKDOWN"
-
-                   # =============================================
+                   # =========================================================
                    # MARKET CRASH SAFETY EXIT
-                   # =============================================
+                   # =========================================================
 
-                        if (
+                   elif market_crash():
 
-                            exit_reason is None
-                            and market_crash()
+                       exit_reason = "MARKET CRASH EXIT"
 
-                        ):
+# =========================================================
+# EXIT EXECUTION
+# =========================================================
 
-                            exit_reason = "MARKET CRASH EXIT"
+if exit_reason:
+
+    if stock not in positions:
+        continue
+
+    daily_profit += pnl_amount
+
+    place_order(stock, "SELL", qty)
+
+    save_trade(
+
+        stock,
+        "SELL",
+        price,
+        qty,
+        pnl_amount,
+        exit_reason
+
+    )
+
+    send(f"""
+
+🔴 POSITION EXIT
+
+📉 STOCK:
+{stock}
+
+💰 EXIT PRICE:
+₹{price}
+
+📦 QUANTITY:
+{qty}
+
+💵 PNL:
+₹{pnl_amount}
+
+📊 RETURN:
+{pnl_percent}%
+
+🧠 EXIT REASON:
+{exit_reason}
+
+💰 DAILY PROFIT:
+₹{round(daily_profit,2)}
+
+🛡 INSTITUTIONAL EXIT ENGINE:
+ACTIVE
+
+✅ POSITION CLOSED
+✅ CAPITAL RELEASED
+✅ EXIT SUCCESSFUL
+
+""")
+
+    delete_position(stock)
+
+    del positions[stock]
+
+    continue
+    
 
                     # =============================================
                     # EXIT EXECUTION
