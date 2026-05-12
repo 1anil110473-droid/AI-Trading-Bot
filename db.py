@@ -283,25 +283,46 @@ def load_positions():
     print("✅ POSITIONS RESTORED")
 
     return positions
-def save_daily_pnl(date, pnl):
 
-    conn = get_connection()
-    cur = conn.cursor()
+# =========================================================
+# DAILY PNL DATABASE
+# =========================================================
 
-    cur.execute("""
+def update_daily_pnl(date, pnl):
+
+    import sqlite3
+
+    conn = sqlite3.connect("trading.db")
+
+    c = conn.cursor()
+
+    c.execute("""
+
         CREATE TABLE IF NOT EXISTS daily_pnl (
+
             date TEXT PRIMARY KEY,
             pnl REAL
+
         )
+
     """)
 
-    cur.execute("""
-        INSERT OR REPLACE INTO daily_pnl (date, pnl)
+    c.execute("""
+
+        INSERT OR REPLACE INTO daily_pnl (
+            date,
+            pnl
+        )
+
         VALUES (?, ?)
+
     """, (date, pnl))
 
     conn.commit()
+
     conn.close()
+
+
 # =========================================================
 # LIFETIME PERFORMANCE ANALYTICS
 # =========================================================
@@ -314,31 +335,6 @@ def get_lifetime_stats():
 
     c = conn.cursor()
 
-    # =========================================
-    # CHECK TABLE
-    # =========================================
-
-    c.execute("""
-
-        CREATE TABLE IF NOT EXISTS trades (
-
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            stock TEXT,
-            action TEXT,
-            price REAL,
-            qty INTEGER,
-            pnl REAL,
-            reason TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-
-        )
-
-    """)
-
-    # =========================================
-    # TOTAL TRADES
-    # =========================================
-
     c.execute("""
 
         SELECT COUNT(*)
@@ -348,10 +344,6 @@ def get_lifetime_stats():
     """)
 
     total_trades = c.fetchone()[0] or 0
-
-    # =========================================
-    # LIFETIME PNL
-    # =========================================
 
     c.execute("""
 
@@ -364,11 +356,8 @@ def get_lifetime_stats():
     lifetime_pnl = c.fetchone()[0]
 
     if lifetime_pnl is None:
-        lifetime_pnl = 0
 
-    # =========================================
-    # WIN TRADES
-    # =========================================
+        lifetime_pnl = 0
 
     c.execute("""
 
@@ -380,10 +369,6 @@ def get_lifetime_stats():
     """)
 
     win_trades = c.fetchone()[0] or 0
-
-    # =========================================
-    # LOSS TRADES
-    # =========================================
 
     c.execute("""
 
@@ -398,19 +383,13 @@ def get_lifetime_stats():
 
     conn.close()
 
-    # =========================================
-    # ACCURACY
-    # =========================================
-
     accuracy = 0
 
     if total_trades > 0:
 
         accuracy = round(
-
             (win_trades / total_trades) * 100,
             2
-
         )
 
     return {
