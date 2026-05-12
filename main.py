@@ -306,6 +306,8 @@ def heartbeat():
             # =============================================
 
             if now - last_heartbeat >= heartbeat_interval:
+                
+                stats = get_lifetime_stats()
 
                 send(f"""
 
@@ -319,6 +321,21 @@ def heartbeat():
 
 💰 DAILY PROFIT:
 ₹{round(daily_profit,2)}
+
+📈 LIFETIME TRADES:
+{stats["total_trades"]}
+
+💰 LIFETIME PNL:
+₹{stats["lifetime_pnl"]}
+
+🎯 ACCURACY:
+{stats["accuracy"]}%
+
+✅ WIN TRADES:
+{stats["win_trades"]}
+
+❌ LOSS TRADES:
+{stats["loss_trades"]}
 
 📊 OPEN POSITIONS:
 {len(positions)}
