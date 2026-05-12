@@ -597,13 +597,13 @@ while True:
                      # INSTITUTIONAL EXIT ENGINE
                      # =============================================
 
-                      exit_reason = None
+                        exit_reason = None
 
                      # =============================================
                      # TARGET EXIT
                      # =============================================
 
-                      target_price = round(
+                        target_price = round(
 
                         bp * (
                             1 + TARGET_PERCENT / 100
