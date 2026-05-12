@@ -556,10 +556,10 @@ while True:
 
                     if (
 
-    pnl_percent >= PARTIAL_BOOKING_PERCENT
-    and not partial_booked
+                        pnl_percent >= PARTIAL_BOOKING_PERCENT
+                        and not partial_booked
 
-):
+                    ):
 
                         partial_qty = qty // 2
 
@@ -567,57 +567,57 @@ while True:
     # EXECUTE PARTIAL SELL
     # =========================================
 
-    place_order(stock, "SELL", partial_qty)
+                       place_order(stock, "SELL", partial_qty)
 
     # =========================================
     # UPDATE REMAINING POSITION
     # =========================================
 
-    remaining_qty = qty - partial_qty
+                      remaining_qty = qty - partial_qty
 
-    positions[stock]["qty"] = remaining_qty
+                      positions[stock]["qty"] = remaining_qty
 
-    positions[stock]["partial_booked"] = True
+                      positions[stock]["partial_booked"] = True
 
     # =========================================
     # SAVE UPDATED POSITION
     # =========================================
 
-    save_position(
+                     save_position(
 
-        stock,
-        positions[stock]["buy_price"],
-        positions[stock]["qty"],
-        positions[stock]["highest_price"],
-        positions[stock]["partial_booked"]
+                         stock,
+                         positions[stock]["buy_price"],
+                         positions[stock]["qty"],
+                         positions[stock]["highest_price"],
+                         positions[stock]["partial_booked"]
 
-    )
+                     )
 
     # =========================================
     # SAVE TRADE
     # =========================================
 
-    partial_pnl = round(
-        ((price - bp) * partial_qty),
-        2
-    )
+                   partial_pnl = round(
+                       ((price - bp) * partial_qty),
+                           2
+                   )
 
-    save_trade(
+                   save_trade(
 
-        stock,
-        "PARTIAL SELL",
-        price,
-        partial_qty,
-        partial_pnl,
-        "PARTIAL PROFIT BOOKING"
+                       stock,
+                       "PARTIAL SELL",
+                       price,
+                       partial_qty,
+                       partial_pnl,
+                       "PARTIAL PROFIT BOOKING"
 
-    )
+                  )
 
     # =========================================
     # TELEGRAM ALERT
     # =========================================
 
-    send(f"""
+                  send(f"""
 
 🟡 REAL PARTIAL PROFIT BOOKING
 
