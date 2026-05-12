@@ -556,40 +556,97 @@ while True:
 
                     if (
 
-                        pnl_percent >= PARTIAL_BOOKING_PERCENT
-                        and not partial_booked
+    pnl_percent >= PARTIAL_BOOKING_PERCENT
+    and not partial_booked
 
-                    ):
+):
 
-                        positions[stock]["partial_booked"] = True
+    partial_qty = qty // 2
 
-                        save_position(
+    # =========================================
+    # EXECUTE PARTIAL SELL
+    # =========================================
 
-                            stock,
-                            positions[stock]["buy_price"],
-                            positions[stock]["qty"],
-                            positions[stock]["highest_price"],
-                            positions[stock]["partial_booked"]
+    place_order(stock, "SELL", partial_qty)
 
-                        )
+    # =========================================
+    # UPDATE REMAINING POSITION
+    # =========================================
 
-                        send(f"""
+    remaining_qty = qty - partial_qty
 
-🟡 PARTIAL PROFIT BOOKING
+    positions[stock]["qty"] = remaining_qty
+
+    positions[stock]["partial_booked"] = True
+
+    # =========================================
+    # SAVE UPDATED POSITION
+    # =========================================
+
+    save_position(
+
+        stock,
+        positions[stock]["buy_price"],
+        positions[stock]["qty"],
+        positions[stock]["highest_price"],
+        positions[stock]["partial_booked"]
+
+    )
+
+    # =========================================
+    # SAVE TRADE
+    # =========================================
+
+    partial_pnl = round(
+        ((price - bp) * partial_qty),
+        2
+    )
+
+    save_trade(
+
+        stock,
+        "PARTIAL SELL",
+        price,
+        partial_qty,
+        partial_pnl,
+        "PARTIAL PROFIT BOOKING"
+
+    )
+
+    # =========================================
+    # TELEGRAM ALERT
+    # =========================================
+
+    send(f"""
+
+🟡 REAL PARTIAL PROFIT BOOKING
 
 📈 STOCK:
 {stock}
 
-💰 CURRENT PRICE:
+💰 ENTRY PRICE:
+₹{bp}
+
+💰 PARTIAL EXIT PRICE:
 ₹{price}
+
+📦 SOLD QUANTITY:
+{partial_qty}
+
+📦 REMAINING QUANTITY:
+{remaining_qty}
+
+💵 BOOKED PROFIT:
+₹{partial_pnl}
 
 📊 RETURN:
 {pnl_percent}%
 
-💵 PNL:
-₹{pnl_amount}
+🛡 REMAINING POSITION:
+ACTIVE
 
-🛡 PROFIT LOCK ACTIVE
+🚀 INSTITUTIONAL SCALE-OUT:
+ACTIVE
 
 """)
                         
