@@ -769,22 +769,22 @@ ACTIVE
 
                         daily_profit += pnl_amount
 
-# =========================================
-# DAILY PNL SAVE (ADD THIS)
-# =========================================
+                    # =========================================
+                    # DAILY PNL SAVE (ADD THIS)
+                    # =========================================
 
-                       today = datetime.now(TIMEZONE).strftime("%Y-%m-%d")
-                       update_daily_pnl(today, daily_profit)
+                        today = datetime.now(TIMEZONE).strftime("%Y-%m-%d")
+                        update_daily_pnl(today, daily_profit)
 
-                       place_order(stock, "SELL", qty)
+                        place_order(stock, "SELL", qty)
 
-                       save_trade(
-                           stock,
-                           "SELL",
-                           price,
-                           qty,
-                           pnl_amount,
-                           exit_reason
+                        save_trade(
+                            stock,
+                            "SELL",
+                            price,
+                            qty,
+                            pnl_amount,
+                            exit_reason
                         )
 
                         send(f"""
