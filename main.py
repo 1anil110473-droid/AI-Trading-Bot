@@ -712,14 +712,14 @@ while True:
                    # MARKET CRASH SAFETY EXIT
                    # =============================================
 
-                       if (
+                        if (
 
-                           exit_reason is None
-                           and market_crash()
+                            exit_reason is None
+                            and market_crash()
 
-                       ):
+                        ):
 
-                           exit_reason = "MARKET CRASH EXIT"
+                            exit_reason = "MARKET CRASH EXIT"
 
                     # =============================================
                     # EXIT EXECUTION
