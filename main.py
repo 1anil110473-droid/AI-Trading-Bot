@@ -513,6 +513,18 @@ while True:
                 )
 
                 # =================================================
+                # STRATEGY
+                # =================================================
+
+                result = apply_strategy(df, weights)
+
+                score = result["score"]
+
+                reasons = result["reasons"]
+
+                confidence = score
+
+                # =================================================
                 # POSITION MANAGEMENT
                 # =================================================
 
@@ -864,17 +876,6 @@ ACTIVE
 
                 if stock in positions:
                     continue
-
-                # =================================================
-                # STRATEGY
-                # =================================================                                                                     
-                result = apply_strategy(df, weights)
-
-                score = result["score"]
-
-                reasons = result["reasons"]
-
-                confidence = score
 
                 # =================================================
                 # TREND FILTER
