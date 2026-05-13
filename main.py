@@ -976,6 +976,19 @@ ACTIVE
                     continue
 
                 # =================================================
+                # RE-ENTRY COOLDOWN
+                # =================================================
+
+                if stock in last_exit_time:
+
+                    cooldown = time.time() - last_exit_time[stock]
+
+                    # 30 MINUTES COOLDOWN
+
+                    if cooldown < 1800:
+                        continue
+                
+                # =================================================
                 # BUY SIGNAL
                 # =================================================
 
