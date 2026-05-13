@@ -67,6 +67,12 @@ daily_profit = 0
 last_heartbeat = 0
 
 # =============================================
+# DAILY RESET SYSTEM
+# =============================================
+
+last_reset_date = None
+
+# =============================================
 # DAILY CONTROL SYSTEM
 # =============================================
 
@@ -208,6 +214,77 @@ def market_open():
     current = now.strftime("%H:%M")
 
     return "09:00" <= current <= "15:30"
+
+# =========================================================
+# DAILY RESET ENGINE
+# =========================================================
+
+def daily_reset():
+
+    global daily_profit
+    global TARGET_REACHED
+    global LOSS_LIMIT_HIT
+    global last_reset_date
+
+    now = datetime.now(TIMEZONE)
+
+    current_date = now.strftime("%Y-%m-%d")
+
+    current_time = now.strftime("%H:%M")
+
+    # =========================================
+    # RESET AFTER 7 AM
+    # =========================================
+
+    if current_time >= "07:00":
+
+        # =====================================
+        # FIRST START
+        # =====================================
+
+        if last_reset_date is None:
+
+            last_reset_date = current_date
+
+        # =====================================
+        # NEW DAY DETECTED
+        # =====================================
+
+        elif current_date != last_reset_date:
+
+            # =================================
+            # RESET DAILY VALUES
+            # =================================
+
+            daily_profit = 0
+
+            TARGET_REACHED = False
+
+            LOSS_LIMIT_HIT = False
+
+            last_reset_date = current_date
+
+            # =================================
+            # SAVE DAILY RESET TO DB
+            # =================================
+
+            update_daily_pnl(current_date, 0)
+
+            send("""
+
+🌅 NEW TRADING DAY STARTED
+
+✅ DAILY PROFIT RESET
+✅ TARGET RESET
+✅ LOSS LIMIT RESET
+✅ BUY SYSTEM REACTIVATED
+
+💰 DAILY PNL:
+₹0
+
+🚀 BOT READY
+
+""")
 
 # =========================================================
 # BUY ALLOWED
@@ -387,6 +464,12 @@ Thread(target=heartbeat, daemon=True).start()
 while True:
 
     try:
+
+        # =====================================
+        # DAILY RESET CHECK
+        # =====================================
+
+        daily_reset()
 
         # =====================================================
         # MARKET CLOSED MODE
