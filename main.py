@@ -567,8 +567,10 @@ while True:
                         2
                     )
 
+                    current_qty = positions[stock]["qty"]
+
                     pnl_amount = round(
-                        ((price - bp) * qty),
+                        ((price - bp) * current_qty),
                         2
                     )
 
@@ -611,6 +613,8 @@ while True:
                         positions[stock]["partial_booked"] = True
 
                         qty = remaining_qty
+                        
+                        current_qty = remaining_qty
 
                         # =========================================
                         # SAVE UPDATED POSITION
@@ -797,21 +801,31 @@ ACTIVE
                             continue
 
                         daily_profit += pnl_amount
+                        
+                        # =========================================
+                        # CURRENT REMAINING QUANTITY
+                        # =========================================
 
-                    # =========================================
-                    # DAILY PNL SAVE (ADD THIS)
-                    # =========================================
+                        current_qty = positions[stock]["qty"]
+
+                        # =========================================
+                        # DAILY PNL SAVE
+                        # =========================================
 
                         today = datetime.now(TIMEZONE).strftime("%Y-%m-%d")
                         update_daily_pnl(today, daily_profit)
 
-                        place_order(stock, "SELL", qty)
+                        # =========================================
+                        # FINAL EXIT
+                        # =========================================
+
+                        place_order(stock, "SELL", current_qty)
 
                         save_trade(
                             stock,
                             "SELL",
                             price,
-                            qty,
+                            current_qty,
                             pnl_amount,
                             exit_reason
                         )
