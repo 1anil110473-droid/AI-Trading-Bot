@@ -796,8 +796,10 @@ ACTIVE
                     # =============================================
 
                     elif (
-                        price < result["support"]
-                        and pnl_percent < 0
+
+                        price < result["support"] * 0.997
+                        and pnl_percent < -0.7
+
                     ):
 
                         exit_reason = "SUPPORT BREAKDOWN"
@@ -807,8 +809,10 @@ ACTIVE
                     # =============================================
 
                     elif (
+
                         result["ema_bearish"]
-                        and pnl_percent > 0.5
+                        and pnl_percent > 1.5
+
                     ):
 
                         exit_reason = "EMA TREND REVERSAL"
@@ -818,8 +822,10 @@ ACTIVE
                     # =============================================
 
                     elif (
-                        price < result["vwap"]
-                        and pnl_percent > 1
+
+                        price < result["vwap"] * 0.998
+                        and pnl_percent > 2
+
                     ):
 
                         exit_reason = "VWAP BREAKDOWN"
