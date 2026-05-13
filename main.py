@@ -489,18 +489,18 @@ while True:
 
                    send(f"""
 
-          🛑 DAILY LOSS LIMIT HIT
+           🛑 DAILY LOSS LIMIT HIT
 
-          💰 TOTAL LOSS:
-          ₹{round(daily_profit,2)}
+           💰 TOTAL LOSS:
+           ₹{round(daily_profit,2)}
 
-          🚫 NEW BUY TRADES BLOCKED
+           🚫 NEW BUY TRADES BLOCKED
 
-          🛡 RISK PROTECTION ACTIVE
+           🛡 RISK PROTECTION ACTIVE
 
-           """)
+            """)
 
-               LOSS_LIMIT_HIT = True
+                LOSS_LIMIT_HIT = True
 
         # =====================================================
         # MARKET TREND
