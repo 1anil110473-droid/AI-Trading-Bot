@@ -884,7 +884,7 @@ ACTIVE
                             "SELL",
                             price,
                             current_qty,
-                            pnl_amount,
+                            final_pnl,
                             exit_reason
                         )
 
@@ -905,7 +905,7 @@ ACTIVE
 {current_qty}
 
 💵 PNL:
-₹{pnl_amount}
+₹{final_pnl}
 
 📊 RETURN:
 {pnl_percent}%
