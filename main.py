@@ -914,6 +914,7 @@ ACTIVE
                         delete_position(stock)
 
                         del positions[stock]
+                        last_exit_time[stock] = time.time()
 
                         continue
 
