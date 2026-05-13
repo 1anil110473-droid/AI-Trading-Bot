@@ -847,7 +847,18 @@ ACTIVE
                         if stock not in positions:
                             continue
 
-                        daily_profit += pnl_amount
+                        # =========================================
+                        # FINAL REMAINING POSITION PNL
+                        # =========================================
+
+                        final_pnl = round(
+
+                            ((price - bp) * current_qty),
+                            2
+
+                        )
+
+                        daily_profit += final_pnl
                         
                         # =========================================
                         # CURRENT REMAINING QUANTITY
