@@ -437,29 +437,6 @@ while True:
         SCAN_INTERVAL = dynamic_scan_interval()
 
         # =====================================================
-        # DAILY TARGET
-        # =====================================================
-
-        if daily_profit >= DAILY_TARGET:
-
-            send(f"""
-
-🎯 DAILY TARGET ACHIEVED
-
-💰 TOTAL PROFIT:
-₹{round(daily_profit,2)}
-
-🛑 NEW TRADES BLOCKED
-
-🛡 CAPITAL PROTECTION ACTIVE
-
-""")
-
-            time.sleep(600)
-
-            continue
-
-        # =====================================================
         # MARKET CRASH PROTECTION
         # =====================================================
 
@@ -478,6 +455,52 @@ while True:
             time.sleep(300)
 
             continue
+            
+            # =====================================================
+            # DAILY TARGET CONTROL
+            # =====================================================
+
+            if daily_profit >= DAILY_TARGET:
+
+                if not TARGET_REACHED:
+
+                    send(f"""
+
+           🎯 DAILY TARGET ACHIEVED
+
+           💰 TOTAL PROFIT:
+           ₹{round(daily_profit,2)}
+
+           🛑 NEW BUY TRADES BLOCKED
+
+           🛡 ONLY POSITION MANAGEMENT ACTIVE
+
+            """)
+
+                TARGET_REACHED = True
+
+           # =====================================================
+           # DAILY LOSS LIMIT CONTROL
+           # =====================================================
+
+           if daily_profit <= DAILY_LOSS_LIMIT:
+
+               if not LOSS_LIMIT_HIT:
+
+                   send(f"""
+
+          🛑 DAILY LOSS LIMIT HIT
+
+          💰 TOTAL LOSS:
+          ₹{round(daily_profit,2)}
+
+          🚫 NEW BUY TRADES BLOCKED
+
+          🛡 RISK PROTECTION ACTIVE
+
+           """)
+
+               LOSS_LIMIT_HIT = True
 
         # =====================================================
         # MARKET TREND
