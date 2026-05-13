@@ -844,7 +844,7 @@ ACTIVE
 ₹{price}
 
 📦 QUANTITY:
-{qty}
+{current_qty}
 
 💵 PNL:
 ₹{pnl_amount}
