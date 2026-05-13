@@ -456,49 +456,49 @@ while True:
 
             continue
             
-            # =====================================================
-            # DAILY TARGET CONTROL
-            # =====================================================
+        # =====================================================
+        # DAILY TARGET CONTROL
+        # =====================================================
 
-            if daily_profit >= DAILY_TARGET:
+        if daily_profit >= DAILY_TARGET:
 
-                if not TARGET_REACHED:
+            if not TARGET_REACHED:
 
-                    send(f"""
+                send(f"""
 
-           🎯 DAILY TARGET ACHIEVED
+        🎯 DAILY TARGET ACHIEVED
 
-           💰 TOTAL PROFIT:
-           ₹{round(daily_profit,2)}
+        💰 TOTAL PROFIT:
+        ₹{round(daily_profit,2)}
 
-           🛑 NEW BUY TRADES BLOCKED
+        🛑 NEW BUY TRADES BLOCKED
 
-           🛡 ONLY POSITION MANAGEMENT ACTIVE
+        🛡 ONLY POSITION MANAGEMENT ACTIVE
 
-            """)
+        """)
 
                 TARGET_REACHED = True
 
-           # =====================================================
-           # DAILY LOSS LIMIT CONTROL
-           # =====================================================
+        # =====================================================
+        # DAILY LOSS LIMIT CONTROL
+        # =====================================================
 
-           if daily_profit <= DAILY_LOSS_LIMIT:
+        if daily_profit <= DAILY_LOSS_LIMIT:
 
-               if not LOSS_LIMIT_HIT:
+            if not LOSS_LIMIT_HIT:
 
-                   send(f"""
+                send(f"""
 
-           🛑 DAILY LOSS LIMIT HIT
+        🛑 DAILY LOSS LIMIT HIT
 
-           💰 TOTAL LOSS:
-           ₹{round(daily_profit,2)}
+        💰 TOTAL LOSS:
+        ₹{round(daily_profit,2)}
 
-           🚫 NEW BUY TRADES BLOCKED
+        🚫 NEW BUY TRADES BLOCKED
 
-           🛡 RISK PROTECTION ACTIVE
+        🛡 RISK PROTECTION ACTIVE
 
-            """)
+        """)
 
                 LOSS_LIMIT_HIT = True
 
