@@ -992,7 +992,13 @@ ACTIVE
                 # BUY SIGNAL
                 # =================================================
 
-                if confidence >= 70:
+                if (
+
+                    confidence >= 85
+                    and not TARGET_REACHED
+                    and not LOSS_LIMIT_HIT
+
+                ):
 
                     qty = FIXED_QUANTITY
 
