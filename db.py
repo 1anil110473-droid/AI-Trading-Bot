@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, text
 import os
+import json
 
 # =========================================================
 # DATABASE CONNECTION
@@ -35,6 +36,7 @@ def init_db():
             qty INT,
             pnl FLOAT,
             reason TEXT,
+            signals JSON,
             time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
@@ -98,7 +100,15 @@ def init_db():
 # SAVE TRADE
 # =========================================================
 
-def save_trade(symbol, action, price, qty, pnl, reason):
+def save_trade(
+    symbol,
+    action,
+    price,
+    qty,
+    pnl,
+    reason,
+    signals=None
+):
 
     with engine.begin() as conn:
 
@@ -110,7 +120,8 @@ def save_trade(symbol, action, price, qty, pnl, reason):
             price,
             qty,
             pnl,
-            reason
+            reason,
+            signals
         )
 
         VALUES(
@@ -119,7 +130,8 @@ def save_trade(symbol, action, price, qty, pnl, reason):
             :p,
             :q,
             :pn,
-            :r
+            :r,
+            :sg
         )
 
         """), {
@@ -129,7 +141,10 @@ def save_trade(symbol, action, price, qty, pnl, reason):
             "p": price,
             "q": qty,
             "pn": pnl,
-            "r": reason
+            "r": reason,
+
+            "sg": json.dumps(signals)
+            if signals else None
 
         })
 
