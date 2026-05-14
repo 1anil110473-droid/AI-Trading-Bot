@@ -1,14 +1,18 @@
+import warnings
+warnings.filterwarnings("ignore")
+
 import yfinance as yf
+yf.set_tz_cache_location("cache")
+
 import pandas as pd
 import time
 import traceback
 import pytz
 import gc
-import warnings
-warnings.filterwarnings("ignore")
 
 from datetime import datetime
 from threading import Thread
+from sqlalchemy.exc import OperationalError
 
 from db import (
     init_db,
@@ -1226,6 +1230,21 @@ PAPER TRADING
         # =====================================================
 
         time.sleep(SCAN_INTERVAL)
+
+    except OperationalError as db_error:
+
+        send(f"""
+
+⚠ DATABASE RECONNECTED
+
+ERROR:
+{str(db_error)}
+
+""")
+
+        time.sleep(5)
+
+        continue
 
     except Exception as e:
 
