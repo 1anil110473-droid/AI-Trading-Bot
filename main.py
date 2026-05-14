@@ -24,6 +24,10 @@ from market import market_trend
 from strategy import apply_strategy
 from telegram_control import send
 from broker import place_order
+from learning import (
+    learn_from_trade,
+    load_weights
+)
 
 # =========================================================
 # V52 ULTRA INSTITUTIONAL AI ENGINE
@@ -123,6 +127,12 @@ STOCKS = [
 # =========================================================
 
 init_db()
+
+# =========================================================
+# LOAD LEARNED AI WEIGHTS
+# =========================================================
+
+load_weights()
 
 # =========================================================
 # LOAD POSITIONS
@@ -648,6 +658,8 @@ while True:
 
                 confidence = score
 
+                signals = result["signals"]
+
                 # =================================================
                 # POSITION MANAGEMENT
                 # =================================================
@@ -1108,7 +1120,8 @@ ACTIVE
                         "buy_price": price,
                         "qty": qty,
                         "highest_price": price,
-                        "partial_booked": False
+                        "partial_booked": False,
+                        "signals": signals
 
                     }
 
@@ -1131,7 +1144,8 @@ ACTIVE
                         price,
                         qty,
                         0,
-                        "AI BUY"
+                        "AI BUY",
+                        signals
 
                     )
 
