@@ -4,6 +4,8 @@ import time
 import traceback
 import pytz
 import gc
+import warnings
+warnings.filterwarnings("ignore")
 
 from datetime import datetime
 from threading import Thread
