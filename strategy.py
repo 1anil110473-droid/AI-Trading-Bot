@@ -351,34 +351,52 @@ def apply_strategy(df, weights):
 
     return {
 
-        "score": final_score,
+    "score": final_score,
 
-        "reasons": reasons,
+    "reasons": reasons,
 
-        "atr": float(last["ATR"]),
+    "signals": {
 
-        "atr_percent": float(atr_percent),
+        "EMA": ema_bullish,
 
-        "support": float(support),
+        "RSI": last["RSI"] > 55,
 
-        "resistance": float(resistance),
+        "MACD": last["MACD"] > last["MACD_SIGNAL"],
 
-        "vwap": float(last["VWAP"]),
+        "VWAP": last["Close"] > last["VWAP"],
 
-        "ema20": float(last["EMA20"]),
+        "VOLUME": volume_spike,
 
-        "ema50": float(last["EMA50"]),
+        "SUPPORT": last["Close"] > support * 1.01,
 
-        "ema_bullish": ema_bullish,
+        "BREAKOUT": breakout
 
-        "ema_bearish": ema_bearish,
+    },
 
-        "volume_spike": volume_spike,
+    "atr": float(last["ATR"]),
 
-        "breakout": breakout,
+    "atr_percent": float(atr_percent),
 
-        "bounce": bounce,
+    "support": float(support),
 
-        "resistance_rejection": resistance_rejection
+    "resistance": float(resistance),
 
-    }
+    "vwap": float(last["VWAP"]),
+
+    "ema20": float(last["EMA20"]),
+
+    "ema50": float(last["EMA50"]),
+
+    "ema_bullish": ema_bullish,
+
+    "ema_bearish": ema_bearish,
+
+    "volume_spike": volume_spike,
+
+    "breakout": breakout,
+
+    "bounce": bounce,
+
+    "resistance_rejection": resistance_rejection
+
+}
