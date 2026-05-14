@@ -942,6 +942,8 @@ ACTIVE
                         if stock not in positions:
                             continue
 
+                        signals = positions[stock].get("signals", {})
+
                         # =========================================
                         # FINAL REMAINING POSITION PNL
                         # =========================================
@@ -980,10 +982,17 @@ ACTIVE
                             price,
                             current_qty,
                             final_pnl,
-                            exit_reason
+                            exit_reason,
+                            signals
+                        )
+
+                        learn_from_trade(
+                        signals,
+                        final_pnl
                         )
 
                         send(f"""
+                        
 
 🔴 POSITION EXIT
 
