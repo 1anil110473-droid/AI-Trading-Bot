@@ -295,7 +295,7 @@ def load_positions():
             buy_price,
             qty,
             highest_price,
-            partial_booked
+            partial_booked,
             signals
 
         FROM positions
