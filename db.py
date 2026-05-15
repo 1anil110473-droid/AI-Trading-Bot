@@ -226,7 +226,7 @@ def save_position(
             buy_price,
             qty,
             highest_price,
-            partial_booked
+            partial_booked,
             signals
         )
 
@@ -235,7 +235,7 @@ def save_position(
             :bp,
             :q,
             :hp,
-            :pb
+            :pb,
             :sg
         )
 
@@ -246,7 +246,7 @@ def save_position(
             buy_price = EXCLUDED.buy_price,
             qty = EXCLUDED.qty,
             highest_price = EXCLUDED.highest_price,
-            partial_booked = EXCLUDED.partial_booked
+            partial_booked = EXCLUDED.partial_booked,
             signals = EXCLUDED.signals
 
         """), {
@@ -255,7 +255,7 @@ def save_position(
             "bp": buy_price,
             "q": qty,
             "hp": highest_price,
-            "pb": partial_booked
+            "pb": partial_booked,
             "sg": json.dumps(signals) if signals else None
 
         })
