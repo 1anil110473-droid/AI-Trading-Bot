@@ -1146,7 +1146,8 @@ ACTIVE
                         positions[stock]["buy_price"],
                         positions[stock]["qty"],
                         positions[stock]["highest_price"],
-                        positions[stock]["partial_booked"]
+                        positions[stock]["partial_booked"],
+                        positions[stock]["signals"]
 
                     )
 
