@@ -186,7 +186,7 @@ def save_trade(
             "r": reason,
 
             "sg": json.dumps(signals)
-            if signals else None
+            if signals else None,
 
         })
 
