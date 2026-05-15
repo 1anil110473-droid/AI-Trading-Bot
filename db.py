@@ -176,13 +176,14 @@ def save_trade(
 
         """), {
 
+            signals = clean_signals(signals)
+
             "s": symbol,
             "a": action,
             "p": price,
             "q": qty,
             "pn": pnl,
             "r": reason,
-            signals = clean_signals(signals)
 
             "sg": json.dumps(signals)
             if signals else None
