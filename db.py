@@ -150,6 +150,8 @@ def save_trade(
     signals=None
 ):
 
+    signals = clean_signals(signals)
+
     with engine.begin() as conn:
 
         conn.execute(text("""
@@ -175,8 +177,6 @@ def save_trade(
         )
 
         """), {
-
-            signals = clean_signals(signals)
 
             "s": symbol,
             "a": action,
@@ -242,6 +242,8 @@ def save_position(
     partial_booked=False,
     signals=None
 ):
+
+    signals = clean_signals(signals) 
     
     with engine.begin() as conn:
 
