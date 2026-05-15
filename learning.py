@@ -1,14 +1,15 @@
-trade_counter = 0
-def learn_from_trade(signals, pnl):
-    global trade_counter
-
-trade_counter += 1
 from db import engine
 from sqlalchemy import text
 from ai import weights
 
 MIN_WEIGHT = 5
 MAX_WEIGHT = 50
+
+# =====================================================
+# TRADE COUNTER
+# =====================================================
+
+trade_counter = 0
 
 # =====================================================
 # LOAD SAVED WEIGHTS
@@ -78,8 +79,11 @@ def save_weights():
 def learn_from_trade(signals, pnl):
 
     global weights
+    global trade_counter
 
     try:
+
+        trade_counter += 1
 
         for indicator, active in signals.items():
 
@@ -113,13 +117,16 @@ def learn_from_trade(signals, pnl):
                 min(MAX_WEIGHT, weights[k])
             )
 
-        save_weights()
+        # =====================================
+        # SAVE EVERY 10 TRADES
+        # =====================================
+
+        if trade_counter >= 10:
+
+            save_weights()
+
+            trade_counter = 0
 
     except Exception as e:
 
         print(e)
-if trade_counter >= 10:
-
-    save_weights()
-
-    trade_counter = 0
