@@ -1202,8 +1202,8 @@ PAPER TRADING
 
 """)
 
-            del df
-            del higher
+                del df
+                del higher
 
             except Exception as stock_error:
 
