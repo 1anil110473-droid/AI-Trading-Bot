@@ -931,6 +931,7 @@ ACTIVE
 
                         exit_reason = "VWAP BREAKDOWN"
 
+
                     # =============================================
                     # MARKET CRASH SAFETY EXIT
                     # =============================================
@@ -1202,11 +1203,11 @@ PAPER TRADING
 
 """)
 
-            if 'df' in locals():
-                del df
+                if 'df' in locals():
+                    del df
 
-            if 'higher' in locals():
-                del higher
+                if 'higher' in locals():
+                    del higher
 
             except Exception as stock_error:
 
@@ -1224,8 +1225,11 @@ PAPER TRADING
 
 """)
                 
-                del df
-                del higher
+                if 'df' in locals():
+                    del df
+
+                if 'higher' in locals():
+                    del higher
 
                 continue
 
