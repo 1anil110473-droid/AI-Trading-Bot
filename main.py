@@ -1203,12 +1203,6 @@ PAPER TRADING
 
 """)
 
-                if 'df' in locals():
-                    del df
-
-                if 'higher' in locals():
-                    del higher
-
             except Exception as stock_error:
 
                 send(f"""
