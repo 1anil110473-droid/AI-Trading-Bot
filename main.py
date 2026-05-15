@@ -1218,7 +1218,7 @@ except Exception as stock_error:
 🛡 BOT CONTINUING SAFELY
 
 """)
-                
+
                 if 'df' in locals():
                     del df
 
