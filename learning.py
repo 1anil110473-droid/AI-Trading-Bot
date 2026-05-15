@@ -1,3 +1,8 @@
+trade_counter = 0
+def learn_from_trade(signals, pnl):
+    global trade_counter
+
+trade_counter += 1
 from db import engine
 from sqlalchemy import text
 from ai import weights
@@ -113,3 +118,8 @@ def learn_from_trade(signals, pnl):
     except Exception as e:
 
         print(e)
+if trade_counter >= 10:
+
+    save_weights()
+
+    trade_counter = 0
