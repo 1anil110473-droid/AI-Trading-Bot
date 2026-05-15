@@ -129,7 +129,7 @@ def init_db():
             qty INT,
             highest_price FLOAT,
             partial_booked BOOLEAN,
-            signals TEXT,
+            signals JSON,
             time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
@@ -186,7 +186,7 @@ def save_trade(
             "r": reason,
 
             "sg": json.dumps(signals)
-            if signals else None,
+            if signals else None
 
         })
 
