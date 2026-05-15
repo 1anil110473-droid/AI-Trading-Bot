@@ -105,6 +105,7 @@ def init_db():
             qty INT,
             highest_price FLOAT,
             partial_booked BOOLEAN,
+            signals TEXT,
             time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
@@ -212,9 +213,10 @@ def save_position(
     buy_price,
     qty,
     highest_price,
-    partial_booked=False
+    partial_booked=False,
+    signals=None
 ):
-
+    
     with engine.begin() as conn:
 
         conn.execute(text("""
@@ -225,6 +227,7 @@ def save_position(
             qty,
             highest_price,
             partial_booked
+            signals
         )
 
         VALUES(
@@ -233,6 +236,7 @@ def save_position(
             :q,
             :hp,
             :pb
+            :sg
         )
 
         ON CONFLICT(symbol)
@@ -243,6 +247,7 @@ def save_position(
             qty = EXCLUDED.qty,
             highest_price = EXCLUDED.highest_price,
             partial_booked = EXCLUDED.partial_booked
+            signals = EXCLUDED.signals
 
         """), {
 
@@ -251,6 +256,7 @@ def save_position(
             "q": qty,
             "hp": highest_price,
             "pb": partial_booked
+            "sg": json.dumps(signals) if signals else None
 
         })
 
@@ -290,6 +296,7 @@ def load_positions():
             qty,
             highest_price,
             partial_booked
+            signals
 
         FROM positions
 
@@ -306,7 +313,8 @@ def load_positions():
             "buy_price": float(row[1]),
             "qty": int(row[2]),
             "highest_price": float(row[3]),
-            "partial_booked": bool(row[4])
+            "partial_booked": bool(row[4]),
+            "signals": json.loads(row[5]) if row[5] else {}
 
         }
 
