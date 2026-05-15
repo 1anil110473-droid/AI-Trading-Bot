@@ -1,6 +1,30 @@
 from sqlalchemy import create_engine, text
 import os
 import json
+import numpy as np
+
+def clean_signals(signals):
+
+    if not signals:
+        return None
+
+    cleaned = {}
+
+    for k, v in signals.items():
+
+        if isinstance(v, (np.bool_, bool)):
+            cleaned[k] = bool(v)
+
+        elif isinstance(v, (np.integer,)):
+            cleaned[k] = int(v)
+
+        elif isinstance(v, (np.floating,)):
+            cleaned[k] = float(v)
+
+        else:
+            cleaned[k] = v
+
+    return cleaned
 
 # =========================================================
 # DATABASE CONNECTION
@@ -158,6 +182,7 @@ def save_trade(
             "q": qty,
             "pn": pnl,
             "r": reason,
+            signals = clean_signals(signals)
 
             "sg": json.dumps(signals)
             if signals else None
