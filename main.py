@@ -1203,7 +1203,7 @@ PAPER TRADING
 
 """)
 
-    except Exception as stock_error:
+     except Exception as stock_error:
 
                 send(f"""
 
