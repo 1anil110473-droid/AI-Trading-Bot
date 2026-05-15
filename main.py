@@ -1202,6 +1202,9 @@ PAPER TRADING
 
 """)
 
+            del df
+            del higher
+
             except Exception as stock_error:
 
                 send(f"""
@@ -1217,6 +1220,9 @@ PAPER TRADING
 🛡 BOT CONTINUING SAFELY
 
 """)
+                
+                del df
+                del higher
 
                 continue
 
