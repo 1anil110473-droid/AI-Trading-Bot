@@ -404,6 +404,36 @@ def update_daily_pnl(date, pnl):
 
         })
 
+# =========================================================
+# LOAD TODAY PNL
+# =========================================================
+
+def get_today_pnl(date):
+
+    with engine.begin() as conn:
+
+        result = conn.execute(text("""
+
+        SELECT pnl
+
+        FROM daily_pnl
+
+        WHERE date = :d
+
+        """), {
+
+            "d": date
+
+        })
+
+        row = result.fetchone()
+
+        if row:
+
+            return float(row[0])
+
+        return 0
+
 
 # =========================================================
 # LIFETIME PERFORMANCE ANALYTICS
