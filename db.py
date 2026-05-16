@@ -46,6 +46,8 @@ engine = create_engine(
 
     pool_timeout=30,
 
+    pool_reset_on_return='rollback',
+
     connect_args={
         "sslmode": "require"
     }
