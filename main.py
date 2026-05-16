@@ -73,7 +73,9 @@ TIMEZONE = pytz.timezone("Asia/Kolkata")
 
 positions = {}
 
-daily_profit = 0
+today = datetime.now(TIMEZONE).strftime("%Y-%m-%d")
+
+daily_profit = get_today_pnl(today)
 
 last_heartbeat = 0
 
