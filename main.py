@@ -21,7 +21,8 @@ from db import (
     save_position,
     delete_position,
     update_daily_pnl,
-    get_lifetime_stats
+    get_lifetime_stats,
+    get_today_pnl
 )
 
 from ai import weights
