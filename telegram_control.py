@@ -20,6 +20,24 @@ CHAT_ID = os.getenv("CHAT_ID")
 LAST_UPDATE_ID = None
 
 # =========================================================
+# SKIP OLD TELEGRAM UPDATES
+# =========================================================
+
+try:
+
+    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+
+    response = requests.get(url).json()
+
+    if response["ok"] and response["result"]:
+
+        LAST_UPDATE_ID = response["result"][-1]["update_id"]
+
+except:
+
+    LAST_UPDATE_ID = None
+
+# =========================================================
 # TELEGRAM DELIVERY ENGINE
 # =========================================================
 
