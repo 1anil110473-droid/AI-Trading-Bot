@@ -9,6 +9,11 @@ from db import (
     get_lifetime_stats
 )
 
+from datetime import datetime
+import pytz
+
+TIMEZONE = pytz.timezone("Asia/Kolkata")
+
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
@@ -172,6 +177,52 @@ def handle_command(message):
 
 🚀 AI ENGINE STATUS:
 ACTIVE
+
+"""
+
+        send(msg)
+
+    # =============================================
+    # STATUS REPORT
+    # =============================================
+
+    elif text == "/status":
+
+        now = datetime.now(TIMEZONE)
+
+        current = now.strftime("%H:%M")
+
+        market_status = "CLOSED"
+
+        if "09:15" <= current <= "15:30":
+            market_status = "OPEN"
+
+        open_positions = get_open_positions()
+
+        msg = f"""
+
+🤖 BOT STATUS REPORT
+
+🕒 TIME:
+{current}
+
+📈 MARKET:
+{market_status}
+
+📦 OPEN POSITIONS:
+{len(open_positions)}
+
+🛡 AI ENGINE:
+ACTIVE
+
+📊 DATABASE:
+CONNECTED
+
+🚀 TELEGRAM:
+ONLINE
+
+✅ BOT STATUS:
+RUNNING
 
 """
 
