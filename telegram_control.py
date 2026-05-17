@@ -5,7 +5,8 @@ import time
 from db import (
     get_today_trades,
     get_last_10_trades,
-    get_open_positions
+    get_open_positions,
+    get_lifetime_stats
 )
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -137,6 +138,40 @@ def handle_command(message):
 💰 Buy Price: ₹{p[1]}
 📦 Qty: {p[2]}
 📈 Highest: ₹{p[3]}
+
+"""
+
+        send(msg)
+
+    # =============================================
+    # PNL REPORT
+    # =============================================
+
+    elif text == "/pnlreport":
+
+        stats = get_lifetime_stats()
+
+        msg = f"""
+
+📊 FULL PERFORMANCE REPORT
+
+📈 TOTAL TRADES:
+{stats["total_trades"]}
+
+💰 LIFETIME PNL:
+₹{stats["lifetime_pnl"]}
+
+🎯 ACCURACY:
+{stats["accuracy"]}%
+
+✅ WIN TRADES:
+{stats["win_trades"]}
+
+❌ LOSS TRADES:
+{stats["loss_trades"]}
+
+🚀 AI ENGINE STATUS:
+ACTIVE
 
 """
 
