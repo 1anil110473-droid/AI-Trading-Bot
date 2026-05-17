@@ -127,7 +127,8 @@ STOCKS = [
 
     "CIPLA.NS",
     "COFORGE.NS",
-    "TRENT.NS"
+    "TRENT.NS",
+    "BHARTIARTL.NS"
 
 ]
 
