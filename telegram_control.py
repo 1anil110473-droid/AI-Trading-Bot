@@ -2,6 +2,12 @@ import requests
 import os
 import time
 
+from db import (
+    get_today_trades,
+    get_last_10_trades,
+    get_open_positions
+)
+
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
