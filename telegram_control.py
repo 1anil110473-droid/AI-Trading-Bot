@@ -194,7 +194,11 @@ ACTIVE
 
         market_status = "CLOSED"
 
-        if "09:15" <= current <= "15:30":
+        if (
+            now.weekday() < 5
+            and "09:15" <= current <= "15:30"
+        ):
+
             market_status = "OPEN"
 
         open_positions = get_open_positions()
