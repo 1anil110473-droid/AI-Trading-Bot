@@ -551,4 +551,84 @@ def get_lifetime_stats():
         "accuracy": accuracy
 
     }
+
+# =========================================================
+# TODAY TRADES
+# =========================================================
+
+def get_today_trades():
+
+    with engine.begin() as conn:
+
+        result = conn.execute(text("""
+
+        SELECT
+            symbol,
+            action,
+            price,
+            qty,
+            pnl,
+            reason,
+            time
+
+        FROM trades
+
+        WHERE DATE(time) = CURRENT_DATE
+
+        ORDER BY time ASC
+
+        """))
+
+        return result.fetchall()
+
+# =========================================================
+# LAST 10 TRADES
+# =========================================================
+
+def get_last_10_trades():
+
+    with engine.begin() as conn:
+
+        result = conn.execute(text("""
+
+        SELECT
+            symbol,
+            action,
+            price,
+            qty,
+            pnl,
+            reason,
+            time
+
+        FROM trades
+
+        ORDER BY time DESC
+
+        LIMIT 10
+
+        """))
+
+        return result.fetchall()
+
+# =========================================================
+# OPEN POSITIONS
+# =========================================================
+
+def get_open_positions():
+
+    with engine.begin() as conn:
+
+        result = conn.execute(text("""
+
+        SELECT
+            symbol,
+            buy_price,
+            qty,
+            highest_price
+
+        FROM positions
+
+        """))
+
+        return result.fetchall()
     
