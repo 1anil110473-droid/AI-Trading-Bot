@@ -29,7 +29,7 @@ from ai import weights
 from risk import position_size
 from market import market_trend
 from strategy import apply_strategy
-from telegram_control import send
+from telegram_control import send, listen_telegram
 from broker import place_order
 from learning import (
     learn_from_trade,
@@ -475,6 +475,8 @@ STABLE
 # =========================================================
 
 Thread(target=heartbeat, daemon=True).start()
+
+Thread(target=listen_telegram, daemon=True).start()
 
 # =========================================================
 # MAIN LOOP
